@@ -820,14 +820,24 @@
       slider.style.top = `${rowRect.top - stageRect.top + rowRect.height / 2 - sliderHeight / 2}px`;
     }
 
-    function resolve(rowLetter, colLetter) {
+    function resolve(rowLetter, colLetter, direction = 'right') {
       const rowIndex = ALPHABET.indexOf(rowLetter);
       const row = sheetData[rowIndex];
-      for (let col = 0; col < row.cols.length; col++) {
-        const slot = row.cols[col].indexOf(colLetter);
-        if (slot !== -1) {
+      if (direction === 'down') {
+        for (let col = 0; col < row.cols.length; col++) {
+          const slot = row.cols[col].indexOf(colLetter);
+          if (slot !== -1) {
+            return {
+              target: sheetData[(rowIndex + 1) % ALPHABET.length].cols[col][slot]
+            };
+          }
+        }
+      } else {
+        const flatRow = row.cols.flat();
+        const pos = flatRow.indexOf(colLetter);
+        if (pos !== -1) {
           return {
-            target: sheetData[(rowIndex + 1) % ALPHABET.length].cols[col][slot]
+            target: flatRow[(pos + 1) % flatRow.length]
           };
         }
       }
@@ -843,7 +853,7 @@
       positionSliderToRow(rowIndex);
       highlightColumnForLetter(rowIndex, col);
       el('out-challenge').textContent = `${row} ${col}`;
-      el('out-response').textContent = resolve(row, col).target;
+      el('out-response').textContent = resolve(row, col, 'down').target;
       el('enc-row').value = row;
       el('enc-col').value = col;
     }
