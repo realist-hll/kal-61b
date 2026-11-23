@@ -6,6 +6,7 @@
   <title>KAL-61B / KTC-1400 DRYAD Simulator</title>
   <link rel="stylesheet" href="styles.css">
   <script src="app.js" defer></script>
+  <script src="letter-encryption.js" defer></script>
 </head>
 <body>
   <div class="device-wrapper">
@@ -93,6 +94,10 @@
         <div class="field-pair">
           <label for="enc-digits">DIGITS:</label>
           <input id="enc-digits" type="text" value="482915" maxlength="16" style="width:110px">
+        </div>
+        <div class="field-pair">
+          <label for="enc-letters">LETTERS:</label>
+          <input id="enc-letters" type="text" placeholder="HELLO" maxlength="24" style="width:110px">
         </div>
         <div class="readout-bar">
           CIPHERTEXT: <span class="readout-val" id="out-ciphertext"></span>
