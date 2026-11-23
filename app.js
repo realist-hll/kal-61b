@@ -1,0 +1,555 @@
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXY'.split('');
+const COL_SIZES = [4, 3, 3, 2, 2, 3, 2, 2, 2, 2];
+const HEADERS_EVERY = 6;
+const HEADER_LETTERS = [
+  ['', 'A', 'B', 'C'],
+  ['D', 'E', 'F'],
+  ['G', 'H', 'J'],
+  ['K', 'L'],
+  ['M', 'N'],
+  ['P', 'Q', 'R'],
+  ['S', 'T'],
+  ['U', 'V'],
+  ['W', 'X'],
+  ['Y', 'Z']
+];
+
+let sheetData = [];
+let activeRowIndex = 0;
+let isDragging = false;
+let dragStartY = 0;
+let sliderStartTop = 0;
+let dragStartedInWindow = false;
+let activeColumnIndex = 0;
+
+const el = id => document.getElementById(id);
+
+function hashSeed(s) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function makeRng(s) {
+  let a = hashSeed(s || 'DEFAULT');
+  return () => {
+    let t = a += 0x6d2b79f5;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffle(a, rng) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function sizeSliderColumns() {
+  const heading = document.querySelector('tr.heading-row');
+  if (!heading) return;
+
+  const columns = [...heading.cells].map(cell => cell.getBoundingClientRect());
+  const bands = [el('slider-top-band'), el('slider-bottom-band')];
+  bands.forEach(band => {
+    const bandRect = band.getBoundingClientRect();
+    const style = getComputedStyle(band);
+    const contentLeft = bandRect.left + parseFloat(style.borderLeftWidth);
+    const contentRight = bandRect.right - parseFloat(style.borderRightWidth);
+    const cells = [...band.children];
+
+    cells.forEach((cell, index) => {
+      const start = index === 0 ? contentLeft : columns[index - 1].right;
+      const end = index === columns.length - 1
+        ? contentRight
+        : columns[index].right;
+      cell.style.width = `${Math.max(0, end - start)}px`;
+    });
+
+   const labelCells = [...heading.cells].slice(1);
+    [...band.children].slice(1).forEach((cell, index) => {
+      const sourceSlots = labelCells[index].querySelectorAll('.hdr-letters span');
+      const targetSlots = cell.querySelectorAll('.slot');
+      const cellLeft = cell.getBoundingClientRect().left;
+
+      targetSlots.forEach((slot, slotIndex) => {
+        const source = sourceSlots[slotIndex];
+        if (!source) return;
+
+        const rect = source.getBoundingClientRect();
+        slot.style.left = `${rect.left - cellLeft}px`;
+        slot.style.width = `${rect.width}px`;
+      });
+    });
+  });
+}
+
+function addSlots(container, letters) {
+  container.className += ' hdr-letters';
+  letters.forEach(letter => {
+    const span = document.createElement('span');
+    span.innerHTML = letter || '&nbsp;';
+    container.appendChild(span);
+  });
+}
+
+function buildBands() {
+  const top = el('slider-top-band');
+  const bottom = el('slider-bottom-band');
+  top.innerHTML = '';
+  bottom.innerHTML = '';
+
+  [['ROW', top], ['SET', bottom]].forEach(([label, band]) => {
+    const spacer = document.createElement('div');
+    spacer.className = 'slider-cell';
+    spacer.textContent = label;
+    band.appendChild(spacer);
+  });
+
+  HEADER_LETTERS.forEach((letters, index) => {
+    const topCell = document.createElement('div');
+    topCell.className = 'slider-cell';
+    topCell.textContent = String(index);
+    top.appendChild(topCell);
+
+    const bottomCell = document.createElement('div');
+    bottomCell.className = 'slider-cell';
+    letters.forEach(letter => {
+      const span = document.createElement('span');
+      span.className = 'slot';
+      span.innerHTML = letter || '&nbsp;';
+      bottomCell.appendChild(span);
+    });
+   bottom.appendChild(bottomCell);
+  });
+}
+
+function createHeading() {
+  const tr = document.createElement('tr');
+  tr.className = 'heading-row';
+  const rowHeading = document.createElement('th');
+  rowHeading.innerHTML = '<span class="hdr-digit">&nbsp;</span><span class="hdr-letters">ROW</span>';
+  tr.appendChild(rowHeading);
+
+  HEADER_LETTERS.forEach((letters, index) => {
+    const th = document.createElement('th');
+    const digit = document.createElement('span');
+    digit.className = 'hdr-digit';
+    digit.textContent = String(index);
+    th.appendChild(digit);
+
+    const labels = document.createElement('span');
+    addSlots(labels, letters);
+    th.appendChild(labels);
+    tr.appendChild(th);
+  });
+  return tr;
+}
+
+function highlightCipherLetter(rowIndex, columnIndex, letter) {
+  document.querySelectorAll('.letter-group span.selected').forEach(span => {
+    span.classList.remove('selected');
+  });
+
+  const row = document.querySelector(
+    `tr.cipher-row[data-row-index="${rowIndex}"]`
+  );
+  if (!row) return;
+
+  activeColumnIndex = columnIndex;
+  if (letter) {
+    const spans = [...row.cells[columnIndex + 1].querySelectorAll('.letter-group span')];
+    const span = spans.find(item => item.textContent === letter);
+    if (span) span.classList.add('selected');
+  }
+}
+
+function highlightColumnForLetter(rowIndex, letter) {
+  const rowData = sheetData[rowIndex];
+  if (!rowData) return;
+
+  const columnIndex = rowData.cols.findIndex(group => group.includes(letter));
+  if (columnIndex >= 0) {
+    highlightCipherLetter(rowIndex, columnIndex, letter);
+  } else {
+    highlightCipherLetter(rowIndex, activeColumnIndex);
+  }
+}
+
+function generateSheet() {
+  const seed = el('seed-input').value.trim().toUpperCase() || 'ALPHA7';
+  el('seed-input').value = seed;
+  el('sheet-label').textContent = `SHEET SEED: ${seed}`;
+  const rng = makeRng(seed);
+
+  sheetData = ALPHABET.map(rowLetter => {
+    const flat = shuffle(ALPHABET, rng);
+    const cols = [];
+    let offset = 0;
+    COL_SIZES.forEach(size => {
+      cols.push(flat.slice(offset, offset + size));
+      offset += size;
+    });
+    return { rowLetter, cols };
+  });
+
+  renderTable();
+  sizeSliderColumns();
+  positionSliderToRow(activeRowIndex);
+  highlightCipherLetter(activeRowIndex, activeColumnIndex, el('auth-col').value);
+  updateAuth();
+  updateEncrypt();
+  updateDecrypt();
+}
+
+function selectRow(index) {
+  const letter = ALPHABET[index];
+  positionSliderToRow(index);
+  if (!el('view-auth').classList.contains('hidden')) {
+    el('auth-row').value = letter;
+    updateAuth();
+  } else if (!el('view-enc').classList.contains('hidden')) {
+    el('enc-row').value = letter;
+    updateEncrypt();
+  } else {
+    el('dec-row').value = letter;
+    updateDecrypt();
+  }
+}
+
+function selectCipherLetter(rowIndex, columnIndex, letter) {
+  positionSliderToRow(rowIndex);
+  highlightCipherLetter(rowIndex, columnIndex, letter);
+  if (!el('view-auth').classList.contains('hidden')) {
+    el('auth-row').value = ALPHABET[rowIndex];
+    el('auth-col').value = letter;
+    updateAuth();
+  } else if (!el('view-enc').classList.contains('hidden')) {
+    el('enc-row').value = ALPHABET[rowIndex];
+    el('enc-col').value = letter;
+    updateEncrypt();
+  } else {
+    el('dec-row').value = ALPHABET[rowIndex];
+    updateDecrypt();
+  }
+}
+
+function renderTable() {
+  const body = el('dryad-body');
+  body.innerHTML = '';
+  sheetData.forEach((row, index) => {
+    if (
+      index === 0 ||
+      (index > 0 && index < ALPHABET.length - 1 && index % HEADERS_EVERY === 0)
+    ) {
+      body.appendChild(createHeading());
+    }
+
+    const tr = document.createElement('tr');
+    tr.className = 'cipher-row';
+    tr.dataset.rowIndex = index;
+    tr.onclick = () => selectRow(index);
+    const label = document.createElement('td');
+    label.className = 'row-label';
+    label.textContent = row.rowLetter;
+    tr.appendChild(label);
+
+    row.cols.forEach((group, columnIndex) => {
+      const td = document.createElement('td');
+      const div = document.createElement('div');
+      div.className = 'letter-group';
+      group.forEach(letter => {
+        const span = document.createElement('span');
+        span.textContent = letter;
+        span.onclick = event => {
+          event.stopPropagation();
+          selectCipherLetter(index, columnIndex, letter);
+        };
+        div.appendChild(span);
+      });
+      td.appendChild(div);
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+}
+
+function positionSliderToRow(index) {
+  if (!sheetData.length) return;
+  activeRowIndex = ((index % sheetData.length) + sheetData.length) % sheetData.length;
+  const stage = el('grid-stage');
+  const slider = el('yellow-slider');
+  const row = document.querySelector(
+    `tr.cipher-row[data-row-index="${activeRowIndex}"]`
+  );
+  if (!row) return;
+
+  const stageRect = stage.getBoundingClientRect();
+  const rowRect = row.getBoundingClientRect();
+  const sliderHeight = slider.offsetHeight || 76;
+  slider.style.top = `${rowRect.top - stageRect.top + rowRect.height / 2 - sliderHeight / 2}px`;
+}
+
+function resolve(rowLetter, colLetter, direction = 'right') {
+  const rowIndex = ALPHABET.indexOf(rowLetter);
+  const row = sheetData[rowIndex];
+  if (direction === 'down') {
+    for (let col = 0; col < row.cols.length; col++) {
+      const slot = row.cols[col].indexOf(colLetter);
+      if (slot !== -1) {
+        return {
+          target: sheetData[(rowIndex + 1) % ALPHABET.length].cols[col][slot]
+        };
+      }
+    }
+  } else {
+    const flatRow = row.cols.flat();
+    const pos = flatRow.indexOf(colLetter);
+    if (pos !== -1) {
+      return {
+        target: flatRow[(pos + 1) % flatRow.length]
+      };
+    }
+  }
+  return { target: '---' };
+}
+
+function updateAuth() {
+  const row = el('auth-row').value;
+  const col = el('auth-col').value;
+  if (!row || !col) return;
+
+  const rowIndex = ALPHABET.indexOf(row);
+  positionSliderToRow(rowIndex);
+  highlightColumnForLetter(rowIndex, col);
+  el('out-challenge').textContent = `${row} ${col}`;
+  el('out-response').textContent = resolve(row, col, 'down').target;
+  el('enc-row').value = row;
+  el('enc-col').value = col;
+}
+
+function updateEncrypt() {
+  const rowLetter = el('enc-row').value;
+  const colLetter = el('enc-col').value;
+  if (!rowLetter || !colLetter) return;
+
+  const rowIndex = ALPHABET.indexOf(rowLetter);
+  highlightColumnForLetter(rowIndex, colLetter);
+  const target = resolve(rowLetter, colLetter).target;
+  const idx = ALPHABET.indexOf(target);
+  const row = sheetData[idx];
+  const counts = Array(COL_SIZES.length).fill(0);
+  const digits = el('enc-digits').value.replace(/[^0-9]/g, '');
+  if (!row) return;
+
+  positionSliderToRow(idx);
+  const encrypted = [...digits].map(character => {
+    const column = Number(character);
+    const pool = row.cols[column];
+    return pool[counts[column]++ % pool.length];
+  }).join('');
+  el('out-ciphertext').textContent = `${rowLetter}${colLetter}${encrypted ? ' ' + encrypted : ''}`;
+}
+
+function updateDecrypt() {
+  const raw = [...el('dec-cipher').value.toUpperCase()]
+    .filter(letter => ALPHABET.includes(letter))
+    .join('');
+  const override = el('dec-row').value;
+  if (!raw) {
+    el('out-plaintext').textContent = '---';
+    return;
+  }
+
+  let payload = raw;
+  let rowIndex;
+  if (override === 'AUTO') {
+    if (raw.length < 2) {
+      el('out-plaintext').textContent = 'NEED 2-LTR KEY';
+      return;
+    }
+    rowIndex = ALPHABET.indexOf(resolve(raw[0], raw[1]).target);
+    payload = raw.slice(2);
+  } else {
+    rowIndex = ALPHABET.indexOf(override);
+  }
+
+  if (!el('view-dec').classList.contains('hidden')) {
+    positionSliderToRow(rowIndex);
+  }
+  if (Number.isInteger(rowIndex) && rowIndex >= 0) {
+    highlightCipherLetter(rowIndex, activeColumnIndex);
+  }
+  const decoded = [...payload]
+    .map(letter => sheetData[rowIndex].cols.findIndex(group => group.includes(letter)))
+    .filter(column => column >= 0);
+  el('out-plaintext').textContent = decoded.length ? decoded.join('') : '---';
+}
+
+function switchMode(mode) {
+  ['auth', 'enc', 'dec'].forEach(name => {
+    el(`view-${name}`).classList.toggle('hidden', name !== mode);
+    el(`tab-${name}`).classList.toggle('active-tab', name === mode);
+  });
+
+  if (mode === 'auth') {
+    updateAuth();
+  } else if (mode === 'enc') {
+    updateEncrypt();
+  } else {
+    if (!el('dec-cipher').value.trim()) {
+      el('dec-cipher').value = el('out-ciphertext').textContent;
+    }
+    updateDecrypt();
+  }
+}
+
+['auth-row', 'auth-col', 'enc-row', 'enc-col'].forEach(id => {
+  ALPHABET.forEach(letter => el(id).appendChild(new Option(letter, letter)));
+});
+ALPHABET.forEach(letter => el('dec-row').appendChild(new Option(letter, letter)));
+el('auth-col').value = el('enc-col').value = 'K';
+
+el('tab-auth').onclick = () => switchMode('auth');
+el('tab-enc').onclick = () => switchMode('enc');
+el('tab-dec').onclick = () => switchMode('dec');
+el('btn-apply-seed').onclick = generateSheet;
+el('seed-input').onkeydown = event => {
+  if (event.key === 'Enter') generateSheet();
+};
+el('btn-rand-seed').onclick = () => {
+  const words = ['BRAVO', 'DELTA', 'SIERRA', 'TANGO', 'VICTOR', 'YANKEE', 'KILO', 'OSCAR'];
+  el('seed-input').value = words[Math.random() * words.length | 0] + (10 + Math.random() * 89 | 0);
+  generateSheet();
+};
+
+el('auth-row').onchange = updateAuth;
+el('auth-col').onchange = updateAuth;
+el('btn-rand-challenge').onclick = () => {
+  el('auth-row').value = ALPHABET[Math.random() * ALPHABET.length | 0];
+  el('auth-col').value = ALPHABET[Math.random() * ALPHABET.length | 0];
+  updateAuth();
+};
+el('enc-row').onchange = el('enc-col').onchange = updateEncrypt;
+el('enc-digits').oninput = updateEncrypt;
+el('dec-cipher').oninput = updateDecrypt;
+el('dec-row').onchange = updateDecrypt;
+window.onresize = () => {
+  sizeSliderColumns();
+  positionSliderToRow(activeRowIndex);
+};
+
+function selectLetterAtSliderX(x) {
+  const row = document.querySelector(
+    `tr.cipher-row[data-row-index="${activeRowIndex}"]`
+  );
+  if (!row) return;
+
+  const cells = [...row.cells].slice(1);
+  const columnIndex = cells.findIndex(cell => {
+    const rect = cell.getBoundingClientRect();
+    return x >= rect.left && x <= rect.right;
+  });
+  if (columnIndex < 0) return;
+
+  const letters = [...cells[columnIndex].querySelectorAll('.letter-group span')];
+  if (!letters.length) {
+    highlightCipherLetter(activeRowIndex, columnIndex);
+    return;
+  }
+
+  const letter = letters.reduce((closest, span) => {
+    const rect = span.getBoundingClientRect();
+    const distance = Math.abs(x - (rect.left + rect.width / 2));
+    return !closest || distance < closest.distance
+      ? { value: span.textContent, distance }
+      : closest;
+  }, null);
+  if (letter) {
+    selectCipherLetter(activeRowIndex, columnIndex, letter.value);
+  }
+}
+
+const slider = el('yellow-slider');
+const stage = el('grid-stage');
+slider.addEventListener('pointerdown', event => {
+  isDragging = true;
+  dragStartedInWindow = !!event.target.closest('.slider-window');
+  dragStartY = event.clientY;
+  sliderStartTop = parseFloat(slider.style.top || '0');
+  slider.classList.add('dragging');
+  slider.setPointerCapture(event.pointerId);
+});
+
+slider.addEventListener('pointermove', event => {
+  if (!isDragging) return;
+
+  const stageRect = stage.getBoundingClientRect();
+  const sliderHeight = slider.offsetHeight || 76;
+  const rows = [...document.querySelectorAll('tr.cipher-row')];
+  const firstRect = rows[0].getBoundingClientRect();
+  const lastRect = rows[rows.length - 1].getBoundingClientRect();
+  const min = firstRect.top + firstRect.height / 2 - stageRect.top - sliderHeight / 2;
+  const max = lastRect.top + lastRect.height / 2 - stageRect.top - sliderHeight / 2;
+  const top = Math.max(
+    min,
+    Math.min(max, sliderStartTop + event.clientY - dragStartY)
+  );
+  slider.style.top = `${top}px`;
+
+  let nearest = activeRowIndex;
+  let distance = Infinity;
+  rows.forEach(row => {
+    const rect = row.getBoundingClientRect();
+    const delta = Math.abs(
+      stageRect.top + top + sliderHeight / 2 - (rect.top + rect.height / 2)
+    );
+    if (delta < distance) {
+      distance = delta;
+      nearest = Number(row.dataset.rowIndex);
+    }
+  });
+
+  if (nearest !== activeRowIndex) {
+    activeRowIndex = nearest;
+    const letter = ALPHABET[nearest];
+    if (!el('view-auth').classList.contains('hidden')) {
+      el('auth-row').value = letter;
+      updateAuth();
+    } else if (!el('view-enc').classList.contains('hidden')) {
+      el('enc-row').value = letter;
+      updateEncrypt();
+    } else {
+      el('dec-row').value = letter;
+      updateDecrypt();
+    }
+  }
+});
+
+const endDrag = event => {
+  if (!isDragging) return;
+  isDragging = false;
+  slider.classList.remove('dragging');
+  if (slider.hasPointerCapture(event.pointerId)) {
+    slider.releasePointerCapture(event.pointerId);
+  }
+  if (dragStartedInWindow) {
+    selectLetterAtSliderX(event.clientX);
+  } else {
+    highlightCipherLetter(activeRowIndex, activeColumnIndex);
+  }
+  dragStartedInWindow = false;
+  positionSliderToRow(activeRowIndex);
+};
+slider.addEventListener('pointerup', endDrag);
+slider.addEventListener('pointercancel', endDrag);
+
+buildBands();
+generateSheet();
