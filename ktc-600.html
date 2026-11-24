@@ -30,31 +30,39 @@
   .kal-table td.grp-start { border-left: 1.2px solid #000; } .kal-table td.grp-end { border-right: 1.2px solid #000; }
   .notes { margin-top: 4px; border: .75px solid #333; padding: 4px; font-size: 6.3pt; line-height: 1.25; background: #fafafa; }
   .footer { margin-top: 3px; text-align: center; font-size: 5.8pt; color: #444; }
-  .radio-section { font-size: 6.4pt; line-height: 1.15; } .radio-section .cat-header { margin-top: 3px; }
-  .radio-section table { margin-top: 2px; } .radio-section td, .radio-section th { padding: 1px 2px; }
-  .radio-assignments td:first-child { font-weight: bold; width: 20%; }
-  .radio-note { margin-top: 3px; font-size: 5.8pt; }
-  .channel-index { font-size: 5.4pt; line-height: 1.05; }
-  .channel-index-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 6px; }
+  .radio-section { font-size: 6.1pt; line-height: 1.05; }
+  .radio-section .header { margin-bottom: 2px; }
+  .radio-section .title { font-size: 8pt; }
+  .radio-section .meta { font-size: 6pt; }
+  .radio-section .cat-header { margin-top: 2px; padding: 1px 3px; font-size: 6pt; }
+  .radio-section table { margin-top: 1px; }
+  .radio-section td, .radio-section th { padding: 1px 2px; }
+  .radio-assignments td:first-child { font-weight: bold; }
+  .radio-note { margin-top: 2px; font-size: 5.2pt; line-height: 1.05; }
+  .channel-index-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 5px; }
+  .channel-index { font-size: 5pt; line-height: 1; }
   .channel-index table { margin: 0; }
-  .channel-index th, .channel-index td { padding: 1.2px 2px; }
-  .channel-index th { font-size: 5.3pt; }
+  .channel-index th, .channel-index td { padding: 1px 1.5px; white-space: nowrap; }
+  .channel-index th { font-size: 4.8pt; }
+  .channel-index th:nth-child(1) { width: 10%; } .channel-index th:nth-child(2) { width: 14%; }
+  .channel-index th:nth-child(3) { width: 29%; } .channel-index th:nth-child(4) { width: 47%; }
   .channel-index td:nth-child(1), .channel-index td:nth-child(2), .channel-index td:nth-child(3) { text-align: center; }
   .channel-index td:nth-child(2) { font-weight: bold; }
-  .channel-index td:last-child { white-space: normal; }
   @media screen and (max-width: 600px) {
     body { font-size: 12px; } #sheets-container { padding: 10px 8px; gap: 12px; }
     .page { width: 100%; min-height: 0; padding: 12px; } .header { align-items: flex-start; flex-wrap: wrap; }
     .title { font-size: .95rem; } .meta { font-size: .75rem; text-align: left; } .cat-header { font-size: .8rem; }
     td, th { padding: 3px 4px; white-space: normal; overflow-wrap: anywhere; }
     .kal-table th, .kal-table td { padding: 3px 0; font-size: clamp(8px, 2.2vw, 11px); }
-    .notes { font-size: .75rem; } .channel-index { font-size: .68rem; }
+    .notes { font-size: .75rem; }
+    .radio-section { overflow-x: auto; }
+    .radio-section .channel-index-grid, .radio-section .channel-index-grid * { white-space: nowrap; }
+    .radio-section .channel-index-grid { min-width: 620px; }
   }
   @media print {
     body { background: #fff; } .controls { display: none !important; }
     #sheets-container { padding: 0; gap: 0; display: block; }
     .page { width: 100%; height: 196mm; min-height: 196mm; max-height: 196mm; padding: 0; box-shadow: none; }
-    .channel-index { font-size: 5.2pt; } .channel-index th, .channel-index td { padding: 1px 2px; }
   }
 </style>
 </head>
@@ -75,32 +83,22 @@ const VOCABULARY = {
   "4. SAFETY, HAZARDS & SEVERE WEATHER": ["DANGER", "EMERGENCY", "FIRST AID", "FLOODED", "INJURED", "MISSING", "NIGHT", "RANGER", "ROCKSLIDE", "SNAKE", "SNOW", "STORM", "WILDLIFE", "WITHDRAW"],
   "5. RADIO PROCEDURE": ["CALL SIGN", "RADIO CHECK", "SWITCH CHANNEL", "SWITCH FREQUENCY", "SWITCH TO PRIMARY", "SWITCH TO SECONDARY", "SWITCH TO ALTERNATE"]
 };
-
-// Australian UHF CB 80-channel plan. Frequencies are MHz; 61–63 are reserved.
 const CHANNEL_FREQUENCIES_MHZ = [
-  476.4250,476.4500,476.4750,476.5000,476.5250,476.5500,476.5750,476.6000,
-  476.6250,476.6500,476.6750,476.7000,476.7250,476.7500,476.7750,476.8000,
-  476.8250,476.8500,476.8750,476.9000,476.9250,476.9500,476.9750,477.0000,
-  477.0250,477.0500,477.0750,477.1000,477.1250,477.1500,477.1750,477.2000,
-  477.2250,477.2500,477.2750,477.3000,477.3250,477.3500,477.3750,477.4000,
-  476.4375,476.4625,476.4875,476.5125,476.5375,476.5625,476.5875,476.6125,
-  476.6375,476.6625,476.6875,476.7125,476.7375,476.7625,476.7875,476.8125,
-  476.8375,476.8625,476.8875,476.9125,476.9250,476.9375,476.9500,476.9875,
-  477.0125,477.0375,477.0625,477.0875,477.1125,477.1375,477.1875,477.2125,
-  477.2375,477.2625,477.2875,477.3125,477.3375,477.3625,477.3875,477.4125
+  476.4250,476.4500,476.4750,476.5000,476.5250,476.5500,476.5750,476.6000,476.6250,476.6500,476.6750,476.7000,476.7250,476.7500,476.7750,476.8000,476.8250,476.8500,476.8750,476.9000,476.9250,476.9500,476.9750,477.0000,477.0250,477.0500,477.0750,477.1000,477.1250,477.1500,477.1750,477.2000,477.2250,477.2500,477.2750,477.3000,477.3250,477.3500,477.3750,477.4000,
+  476.4375,476.4625,476.4875,476.5125,476.5375,476.5625,476.5875,476.6125,476.6375,476.6625,476.6875,476.7125,476.7375,476.7625,476.7875,476.8125,476.8375,476.8625,476.8875,476.9125,476.9250,476.9375,476.9500,476.9875,477.0125,477.0375,477.0625,477.0875,477.1125,477.1375,477.1875,477.2125,477.2375,477.2625,477.2875,477.3125,477.3375,477.3625,477.3875,477.4125
 ];
 function channelCommonUse(ch) {
   if (ch === 5 || ch === 35) return "Emergency only";
   if (ch === 11) return "Calling";
   if (ch === 10) return "4WD / convoy";
   if (ch === 18) return "Caravans / campers";
-  if (ch === 22 || ch === 23) return "Data / telemetry only";
-  if (ch === 40) return "Highway / trucking";
-  if (ch >= 1 && ch <= 8) return "Repeater input (1–8 / 31–38)";
-  if (ch >= 31 && ch <= 38) return "Repeater output (paired 1–8)";
-  if (ch >= 41 && ch <= 48) return "Repeater input (41–48 / 71–78)";
-  if (ch >= 71 && ch <= 78) return "Repeater output (paired 41–48)";
-  if (ch >= 61 && ch <= 63) return "Reserved — do not use";
+  if (ch === 22 || ch === 23) return "Data only";
+  if (ch === 40) return "Trucking";
+  if (ch >= 1 && ch <= 8) return `Repeater input ${ch}`;
+  if (ch >= 31 && ch <= 38) return `Repeater output ${ch - 30}`;
+  if (ch >= 41 && ch <= 48) return `Repeater input ${ch}`;
+  if (ch >= 71 && ch <= 78) return `Repeater output ${ch - 30}`;
+  if (ch >= 61 && ch <= 63) return "Reserved";
   return "";
 }
 function createRNG(seed) {
@@ -118,7 +116,7 @@ function generateHammingTrigraphs(count, rng) {
   for (const a of letters) for (const b of letters) for (const c of letters) all.push(a + b + c);
   shuffle(all, rng); const selected = [];
   for (const candidate of all) {
-    if (selected.every(existing => (candidate[0] !== existing[0]) + (candidate[1] !== existing[1]) + (candidate[2] !== existing[2]) >= 2)) {
+    if (selected.every(existing => Number(candidate[0] !== existing[0]) + Number(candidate[1] !== existing[1]) + Number(candidate[2] !== existing[2]) >= 2)) {
       selected.push(candidate); if (selected.length === count) return selected;
     }
   }
@@ -128,33 +126,30 @@ const KAL61_SLOT_WIDTHS = [4,3,3,2,2,3,2,2,2,2];
 const ALPHABET_25 = "ABCDEFGHIJKLMNOPQRSTUVWXY".split("");
 function generateKAL61Rows(rng) { return ALPHABET_25.map(rowLabel => ({ rowLabel, letters: shuffle([...ALPHABET_25], rng) })); }
 
-function buildRadioPages(dayNum, setNum, mapping, channelCodes) {
-  const assignments = ["PRIMARY", "SECONDARY", "ALTERNATE 1", "ALTERNATE 2"];
-  const assignmentRows = assignments.map(role => `<tr><td>${role}</td><td>&nbsp;</td><td>CH ____</td><td>________ MHz</td></tr>`).join("");
+function buildRadioPage(dayNum, setNum, mapping, channelCodes) {
+  const assignments = ["PRIMARY", "SECONDARY", "ALT 1", "ALT 2"];
+  const assignmentRows = assignments.map(role => `<tr><td>${role}</td><td>____________</td><td>CH ____</td><td>________ MHz</td></tr>`).join("");
   const switchRows = ["CALL SIGN", "RADIO CHECK", "SWITCH CHANNEL", "SWITCH FREQUENCY", "SWITCH TO PRIMARY", "SWITCH TO SECONDARY", "SWITCH TO ALTERNATE"]
     .map(phrase => `<tr><td>${phrase}</td><td class="c">${mapping[phrase]}</td></tr>`).join("");
-  const planPage = `<div class="page radio-section"><div><div class="header"><div class="title">RADIO PLAN &amp; CALL SIGNS</div><div class="meta">DAY ${dayNum} | SET ${setNum} | UHF CB</div></div>` +
-    `<div class="cat-header">CALL SIGNS</div><table><tbody><tr><th>YOUR STATION</th><td>&nbsp;</td><th>TEAM / OTHER</th><td>&nbsp;</td></tr></tbody></table>` +
-    `<div class="cat-header">PRIMARY / SECONDARY FREQUENCIES &amp; ALTERNATES</div><table class="radio-assignments"><thead><tr><th>ROLE</th><th>CALL SIGN</th><th>CHANNEL</th><th>FREQUENCY</th></tr></thead><tbody>${assignmentRows}</tbody></table>` +
-    `<div class="cat-header">RADIO PROCEDURE CODES</div><table><thead><tr><th>MEANING</th><th>CODE</th></tr></thead><tbody>${switchRows}</tbody></table>` +
-    `<div class="radio-note"><strong>Channel codes:</strong> The index assigns one KTC-600 trigraph per channel. Frequencies and conventions are for the Australian UHF CB plan; confirm current local rules. UHF CB is shared radio, not private or encrypted.</div></div>` +
-    `<div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
-
-  // Four compact 20-channel tables in a 2×2 grid keep the entire index on one A5 page.
   const panels = [];
-  for (let start = 1; start <= 80; start += 20) {
+  for (let start = 1; start <= 80; start += 40) {
     const rows = [];
-    for (let channel = start; channel < start + 20; channel++) {
-      const use = channelCommonUse(channel);
-      rows.push(`<tr><td>${String(channel).padStart(2, "0")}</td><td>${channelCodes[channel - 1]}</td><td>${CHANNEL_FREQUENCIES_MHZ[channel - 1].toFixed(4)}</td><td>${use || "&nbsp;"}</td></tr>`);
+    for (let ch = start; ch < start + 40; ch++) {
+      const use = channelCommonUse(ch);
+      rows.push(`<tr><td>${String(ch).padStart(2, "0")}</td><td>${channelCodes[ch - 1]}</td><td>${CHANNEL_FREQUENCIES_MHZ[ch - 1].toFixed(4)}</td><td>${use || ""}</td></tr>`);
     }
     panels.push(`<table><thead><tr><th>CH</th><th>KTC</th><th>MHz</th><th>COMMON USE</th></tr></thead><tbody>${rows.join("")}</tbody></table>`);
   }
-  const indexPage = `<div class="page channel-index"><div><div class="header"><div class="title">80-CHANNEL UHF CB INDEX</div><div class="meta">DAY ${dayNum} | SET ${setNum}</div></div>` +
+  return `<div class="page radio-section"><div>` +
+    `<div class="header"><div class="title">RADIO PLAN &amp; 80-CHANNEL UHF CB INDEX</div><div class="meta">DAY ${dayNum} | SET ${setNum}</div></div>` +
+    `<div class="cat-header">CALL SIGNS / PRIMARY, SECONDARY &amp; ALTERNATES</div>` +
+    `<table><tbody><tr><th>YOUR CALL SIGN</th><td>____________</td><th>TEAM CALL SIGN</th><td>____________</td></tr></tbody></table>` +
+    `<table class="radio-assignments"><thead><tr><th>ROLE</th><th>CALL SIGN</th><th>CHANNEL</th><th>FREQUENCY</th></tr></thead><tbody>${assignmentRows}</tbody></table>` +
+    `<div class="cat-header">RADIO PROCEDURE CODES</div><table><thead><tr><th>MEANING</th><th>CODE</th></tr></thead><tbody>${switchRows}</tbody></table>` +
+    `<div class="cat-header">CHANNEL | KTC-600 CODE | FREQUENCY | COMMON USE</div>` +
     `<div class="channel-index-grid">${panels.join("")}</div>` +
-    `<div class="radio-note">Blank use cells are available for local conventions. Australian UHF CB plan; channels 61–63 are reserved. Check applicable rules.</div></div>` +
-    `<div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
-  return planPage + indexPage;
+    `<div class="radio-note">Blank use cells are intentionally left free. Australian UHF CB plan; channels 61–63 reserved. Confirm current local regulations and channel use. Shared, unencrypted radio.</div>` +
+    `</div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
 }
 
 function buildDayHTML(dayNum, startSet, rng) {
@@ -180,8 +175,7 @@ function buildDayHTML(dayNum, startSet, rng) {
     const first = decodePairs[i], second = decodePairs[i + halfDec] || { code: "", word: "" };
     decodeRowsHTML += `<tr><td class="c">${first.code}</td><td class="w">${first.word}</td><td class="c">${second.code}</td><td class="w">${second.word}</td></tr>`;
   }
-  const page2 = `<div class="page"><div><div class="header"><div class="title">KTC-600 OPERATIONS CODE — DECODE</div><div class="meta">DAY ${dayNum} | SET ${setNum} | ALPHABETICAL</div></div>` +
-    `<table><thead><tr><th class="c">CODE</th><th class="w">PLAINTEXT</th><th class="c">CODE</th><th class="w">PLAINTEXT</th></tr></thead><tbody>${decodeRowsHTML}</tbody></table></div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
+  const page2 = `<div class="page"><div><div class="header"><div class="title">KTC-600 OPERATIONS CODE — DECODE</div><div class="meta">DAY ${dayNum} | SET ${setNum} | ALPHABETICAL</div></div><table><thead><tr><th class="c">CODE</th><th class="w">PLAINTEXT</th><th class="c">CODE</th><th class="w">PLAINTEXT</th></tr></thead><tbody>${decodeRowsHTML}</tbody></table></div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
   const headerSpans = KAL61_SLOT_WIDTHS.map((span,digit) => `<th colspan="${span}">${digit}</th>`).join("");
   const starts = new Set(), ends = new Set(); let cursor = 0;
   for (const width of KAL61_SLOT_WIDTHS) { starts.add(cursor); ends.add(cursor + width - 1); cursor += width; }
@@ -189,10 +183,8 @@ function buildDayHTML(dayNum, startSet, rng) {
     const cells = letters.map((ch,index) => `<td class="${[starts.has(index) ? "grp-start" : "", ends.has(index) ? "grp-end" : ""].filter(Boolean).join(" ")}">${ch}</td>`).join("");
     return `<tr><td class="row-lbl">${rowLabel}</td>${cells}</tr>`;
   }).join("");
-  const page3 = `<div class="page"><div><div class="header"><div class="title">KTC-1400 / KAL-61 NUMERAL CIPHER</div><div class="meta">DAY ${dayNum} | SET ${setNum} | LIST ALPHA</div></div>` +
-    `<table class="kal-table"><thead><tr><th class="row-lbl"></th>${headerSpans}</tr></thead><tbody>${kalBodyHTML}</tbody></table>` +
-    `<div class="notes"><strong>KAL-61 FRAME ALIGNMENT:</strong> Insert sheet so rows A–Y align with the left window and digits 0–9 align with the top column slots (4-3-3-2-2-3-2-2-2-2).<br><br><strong>ENCIPHERMENT:</strong> Pick random start row + indicator letter. Encipher one digit per row stepping down (A→Y→A). Wrap with KTC-600 NUMERALS and TEXT codes.</div></div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
-  return page1 + page2 + page3 + buildRadioPages(dayNum, setNum, mapping, channelCodes);
+  const page3 = `<div class="page"><div><div class="header"><div class="title">KTC-1400 / KAL-61 NUMERAL CIPHER</div><div class="meta">DAY ${dayNum} | SET ${setNum} | LIST ALPHA</div></div><table class="kal-table"><thead><tr><th class="row-lbl"></th>${headerSpans}</tr></thead><tbody>${kalBodyHTML}</tbody></table><div class="notes"><strong>KAL-61 FRAME ALIGNMENT:</strong> Insert sheet so rows A–Y align with the left window and digits 0–9 align with the top column slots (4-3-3-2-2-3-2-2-2-2).<br><br><strong>ENCIPHERMENT:</strong> Pick random start row + indicator letter. Encipher one digit per row stepping down (A→Y→A). Wrap with KTC-600 NUMERALS and TEXT codes.</div></div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
+  return page1 + page2 + page3 + buildRadioPage(dayNum, setNum, mapping, channelCodes);
 }
 function renderSheets() {
   const days = Math.max(1, Math.min(30, parseInt(document.getElementById("inp-days").value, 10) || 1));
