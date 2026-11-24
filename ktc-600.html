@@ -63,6 +63,7 @@
     }
     .notes { font-size: 0.75rem; }
     .radio-channels { font-size: 0.7rem; }
+    .channel-index { font-size: 0.75rem; }
   }
   @media print {
     body { background: #fff; }
@@ -114,6 +115,13 @@
   .radio-channels { font-size: 6pt; }
   .radio-channels td { text-align: center; }
   .radio-note { margin-top: 3px; font-size: 5.8pt; }
+  .channel-index { font-size: 7pt; line-height: 1.1; }
+  .channel-index table { margin-top: 4px; }
+  .channel-index th, .channel-index td { padding: 2px 3px; }
+  .channel-index td:nth-child(1), .channel-index td:nth-child(2),
+  .channel-index td:nth-child(3) { text-align: center; }
+  .channel-index td:nth-child(2) { font-weight: bold; }
+  .channel-index td:last-child { white-space: normal; }
   .footer { margin-top: 3px; text-align: center; font-size: 5.8pt; color: #444; }
 </style>
 </head>
@@ -156,6 +164,35 @@ const VOCABULARY = {
     "SWITCH TO PRIMARY", "SWITCH TO SECONDARY", "SWITCH TO ALTERNATE"
   ]
 };
+
+// Australian UHF CB 80-channel plan. Frequencies are MHz; 61-63 are reserved.
+const CHANNEL_FREQUENCIES_MHZ = [
+  476.4250,476.4500,476.4750,476.5000,476.5250,476.5500,476.5750,476.6000,
+  476.6250,476.6500,476.6750,476.7000,476.7250,476.7500,476.7750,476.8000,
+  476.8250,476.8500,476.8750,476.9000,476.9250,476.9500,476.9750,477.0000,
+  477.0250,477.0500,477.0750,477.1000,477.1250,477.1500,477.1750,477.2000,
+  477.2250,477.2500,477.2750,477.3000,477.3250,477.3500,477.3750,477.4000,
+  476.4375,476.4625,476.4875,476.5125,476.5375,476.5625,476.5875,476.6125,
+  476.6375,476.6625,476.6875,476.7125,476.7375,476.7625,476.7875,476.8125,
+  476.8375,476.8625,476.8875,476.9125,476.9250,476.9375,476.9500,476.9875,
+  477.0125,477.0375,477.0625,477.0875,477.1125,477.1375,477.1875,477.2125,
+  477.2375,477.2625,477.2875,477.3125,477.3375,477.3625,477.3875,477.4125
+];
+
+function channelCommonUse(channel) {
+  if (channel === 5 || channel === 35) return "Emergency only";
+  if (channel === 11) return "Calling";
+  if (channel === 10) return "4WD / convoy";
+  if (channel === 18) return "Caravans / campers";
+  if (channel === 22 || channel === 23) return "Data / telemetry only";
+  if (channel === 40) return "Highway / trucking";
+  if (channel >= 1 && channel <= 8) return "Repeater input (1–8 / 31–38)";
+  if (channel >= 31 && channel <= 38) return "Repeater output (paired 1–8)";
+  if (channel >= 41 && channel <= 48) return "Repeater input (41–48 / 71–78)";
+  if (channel >= 71 && channel <= 78) return "Repeater output (paired 41–48)";
+  if (channel >= 61 && channel <= 63) return "Reserved — do not use";
+  return "";
+}
 
 // Mulberry32-style seeded generator for repeatable sheets.
 function createRNG(seedStr) {
@@ -218,13 +255,12 @@ function generateKAL61Rows(rng) {
   }));
 }
 
-function buildRadioPage(dayNum, setNum, mapping) {
+function buildRadioPages(dayNum, setNum, mapping, channelCodes) {
   const assignments = ["PRIMARY", "SECONDARY", "ALTERNATE 1", "ALTERNATE 2"];
   let assignmentRows = "";
   for (const role of assignments) {
     assignmentRows += `<tr><td>${role}</td><td>&nbsp;</td><td>CH ____</td><td>________ MHz</td></tr>`;
   }
-
   const switchPhrases = [
     "CALL SIGN", "RADIO CHECK", "SWITCH CHANNEL", "SWITCH FREQUENCY",
     "SWITCH TO PRIMARY", "SWITCH TO SECONDARY", "SWITCH TO ALTERNATE"
@@ -233,13 +269,7 @@ function buildRadioPage(dayNum, setNum, mapping) {
     `<tr><td>${phrase}</td><td class="c">${mapping[phrase]}</td></tr>`
   ).join("");
 
-  let channelRows = "";
-  for (let row = 0; row < 20; row++) {
-    const channels = [row + 1, row + 21, row + 41, row + 61];
-    channelRows += `<tr>${channels.map(channel => `<td>${String(channel).padStart(2, "0")}</td>`).join("")}</tr>`;
-  }
-
-  return `<div class="page radio-section"><div>` +
+  const planPage = `<div class="page radio-section"><div>` +
     `<div class="header"><div class="title">RADIO PLAN &amp; CALL SIGNS</div>` +
     `<div class="meta">DAY ${dayNum} | SET ${setNum} | UHF CB</div></div>` +
     `<div class="cat-header">CALL SIGNS</div>` +
@@ -249,18 +279,36 @@ function buildRadioPage(dayNum, setNum, mapping) {
     `<tbody>${assignmentRows}</tbody></table>` +
     `<div class="cat-header">RADIO PROCEDURE CODES</div>` +
     `<table><thead><tr><th>MEANING</th><th>CODE</th></tr></thead><tbody>${switchRows}</tbody></table>` +
-    `<div class="cat-header">80-CHANNEL UHF CB CHANNEL INDEX</div>` +
-    `<table class="radio-channels"><thead><tr><th>CH</th><th>CH</th><th>CH</th><th>CH</th></tr></thead><tbody>${channelRows}</tbody></table>` +
-    `<div class="radio-note"><strong>Frequency:</strong> Record the MHz values from the locally approved channel plan and your radio's channel chart; channel-frequency assignments and permitted use depend on jurisdiction and equipment. Follow local restrictions, including emergency and data-only channel rules. UHF CB transmissions are not private or encrypted; these procedure codes are not encryption.</div>` +
+    `<div class="radio-note"><strong>Channel codes:</strong> The following index assigns a distinct KTC-600 trigraph to each channel. Frequency/use conventions shown are for the Australian UHF CB plan. Confirm the current local channel plan and radio settings; follow all restrictions. UHF CB is open, shared radio—not private or encrypted.</div>` +
     `</div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
+
+  let indexPages = "";
+  for (let start = 1; start <= 80; start += 20) {
+    let rows = "";
+    const end = Math.min(start + 19, 80);
+    for (let channel = start; channel <= end; channel++) {
+      const code = channelCodes[channel - 1];
+      const frequency = CHANNEL_FREQUENCIES_MHZ[channel - 1].toFixed(4);
+      const use = channelCommonUse(channel);
+      rows += `<tr><td>${String(channel).padStart(2, "0")}</td><td>${code}</td><td>${frequency}</td><td>${use || "&nbsp;"}</td></tr>`;
+    }
+    indexPages += `<div class="page channel-index"><div>` +
+      `<div class="header"><div class="title">80-CHANNEL UHF CB INDEX</div>` +
+      `<div class="meta">CH ${String(start).padStart(2, "0")}–${String(end).padStart(2, "0")} | DAY ${dayNum} | SET ${setNum}</div></div>` +
+      `<table><thead><tr><th>CH</th><th>KTC-600</th><th>MHz</th><th>COMMON USE</th></tr></thead><tbody>${rows}</tbody></table>` +
+      `<div class="radio-note">Blank use cells are left available for local conventions. UHF CB channel use can vary by jurisdiction; channels 61–63 are reserved in the Australian plan.</div>` +
+      `</div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
+  }
+  return planPage + indexPages;
 }
 
 function buildDayHTML(dayNum, startSet, rng) {
   const setNum = String(startSet + dayNum - 1).padStart(2, "0");
   const allWords = Object.values(VOCABULARY).flat();
-  const trigraphs = generateHammingTrigraphs(allWords.length, rng);
+  const allTrigraphs = generateHammingTrigraphs(allWords.length + 80, rng);
   const mapping = {};
-  allWords.forEach((word, index) => { mapping[word] = trigraphs[index]; });
+  allWords.forEach((word, index) => { mapping[word] = allTrigraphs[index]; });
+  const channelCodes = allTrigraphs.slice(allWords.length);
 
   // Page 1: encode lookup.
   let encodeHTML = "";
@@ -327,7 +375,7 @@ function buildDayHTML(dayNum, startSet, rng) {
     `<strong>ENCIPHERMENT:</strong> Pick random start row + indicator letter. Encipher one digit per row stepping down (A→Y→A). Wrap with KTC-600 NUMERALS and TEXT codes.</div></div>` +
     `<div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
 
-  return page1 + page2 + page3 + buildRadioPage(dayNum, setNum, mapping);
+  return page1 + page2 + page3 + buildRadioPages(dayNum, setNum, mapping, channelCodes);
 }
 
 function renderSheets() {
