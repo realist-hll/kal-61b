@@ -40,12 +40,18 @@
   .channel-index-grid { display: grid; width: 100%; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 4px; }
   .channel-index { min-width: 0; width: 100%; font-size: 4.8pt; line-height: 1; }
   .channel-index table { width: 100%; min-width: 0; margin: 0; }
-  .channel-index th, .channel-index td { padding: 1px 1px; white-space: nowrap; }
+  .channel-index th, .channel-index td { padding: 1px; white-space: nowrap; }
   .channel-index th { font-size: 4.6pt; }
-  .channel-index th:nth-child(1) { width: 10%; } .channel-index th:nth-child(2) { width: 15%; }
-  .channel-index th:nth-child(3) { width: 31%; } .channel-index th:nth-child(4) { width: 44%; }
+  .channel-index th:nth-child(1) { width: 9%; } .channel-index th:nth-child(2) { width: 13%; }
+  .channel-index th:nth-child(3) { width: 28%; } .channel-index th:nth-child(4) { width: 50%; }
   .channel-index td:nth-child(1), .channel-index td:nth-child(2), .channel-index td:nth-child(3) { text-align: center; }
   .channel-index td:nth-child(2) { font-weight: bold; }
+  .channel-index tbody tr:nth-child(even) { background: #e8edf3; }
+  .channel-index tbody tr:nth-child(odd) { background: #fff; }
+  .channel-index tbody td:nth-child(1) { background: #dbe3ec; font-weight: bold; }
+  .channel-index tbody td:nth-child(2) { background: #f0f3f7; }
+  .channel-index thead th { background: #cbd5e1; }
+  .radio-assignments tbody tr:nth-child(even), .radio-section > div > table:first-of-type tbody tr:nth-child(even) { background: #edf1f5; }
   @media screen and (max-width: 600px) {
     body { font-size: 12px; } #sheets-container { padding: 10px 8px; gap: 12px; }
     .page { width: 100%; min-height: 0; padding: 12px; } .header { align-items: flex-start; flex-wrap: wrap; }
@@ -82,7 +88,6 @@ const VOCABULARY = {
   "4. SAFETY, HAZARDS & SEVERE WEATHER": ["DANGER", "EMERGENCY", "FIRST AID", "FLOODED", "INJURED", "MISSING", "NIGHT", "RANGER", "ROCKSLIDE", "SNAKE", "SNOW", "STORM", "WILDLIFE", "WITHDRAW"],
   "5. RADIO PROCEDURE": ["CALL SIGN", "RADIO CHECK", "SWITCH CHANNEL", "SWITCH FREQUENCY", "SWITCH TO PRIMARY", "SWITCH TO SECONDARY", "SWITCH TO ALTERNATE"]
 };
-// Australian UHF CB 80-channel plan, frequencies in MHz.
 const CHANNEL_FREQUENCIES_MHZ = [
   476.4250,476.4500,476.4750,476.5000,476.5250,476.5500,476.5750,476.6000,476.6250,476.6500,476.6750,476.7000,476.7250,476.7500,476.7750,476.8000,476.8250,476.8500,476.8750,476.9000,476.9250,476.9500,476.9750,477.0000,477.0250,477.0500,477.0750,477.1000,477.1250,477.1500,477.1750,477.2000,477.2250,477.2500,477.2750,477.3000,477.3250,477.3500,477.3750,477.4000,
   476.4375,476.4625,476.4875,476.5125,476.5375,476.5625,476.5875,476.6125,476.6375,476.6625,476.6875,476.7125,476.7375,476.7625,476.7875,476.8125,476.8375,476.8625,476.8875,476.9125,476.9250,476.9375,476.9500,476.9875,477.0125,477.0375,477.0625,477.0875,477.1125,477.1375,477.1875,477.2125,477.2375,477.2625,477.2875,477.3125,477.3375,477.3625,477.3875,477.4125
