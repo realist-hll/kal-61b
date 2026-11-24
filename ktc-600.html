@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KTC-600 & KAL-61 (KTC-1400) Multi-Day Pocket Sheet Generator</title>
+<style>
+  @page {
+    size: A5 portrait; /* 148mm x 210mm */
+    margin: 7mm;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: "Courier New", Courier, monospace;
+    background-color: #e9ecef;
+    color: #111;
+    font-size: 7.2pt;
+  }
+
+  /* Screen-only control bar */
+  .controls {
+    background: #1f2937;
+    color: #fff;
+    padding: 12px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    align-items: center;
+    justify-content: center;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  }
+
+  .controls label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+  }
+
+  .controls input {
+    width: 75px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    border: 1px solid #4b5563;
+    background: #111827;
+    color: #fff;
+    font-size: 13px;
+  }
+
+  .controls button {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  .btn-gen {
+    background: #2563eb;
+    color: #fff;
+  }
+  .btn-gen:hover { background: #1d4ed8; }
+
+  .btn-print {
+    background: #10b981;
+    color: #fff;
+  }
+  .btn-print:hover { background: #059669; }
+
+  /* Sheet preview container on screen */
+  #sheets-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 0;
+    gap: 16px;
+  }
+
+  .page {
+    width: 148mm;
+    min-height: 210mm;
+    padding: 7mm;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .page:last-child {
+    page-break-after: auto;
+  }
+
+  @media print {
+    body {
+      background: #fff;
+    }
+    .controls {
+      display: none !important;
+    }
+    #sheets-container {
+      padding: 0;
+      gap: 0;
+      display: block;
+    }
+    .page {
+      width: 100%;
+      min-height: auto;
+      padding: 0;
+      box-shadow: none;
+    }
+  }
+
+  /* Typography & Tables */
+  .header {
+    border-bottom: 1.5px solid #000;
+    padding-bottom: 2px;
+    margin-bottom: 3px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .title {
+    font-weight: bold;
+    font-size: 8.8pt;
+    letter-spacing: 0.2px;
+  }
+
+  .meta {
+    font-size: 6.8pt;
+    font-weight: bold;
+  }
+
+  .cat-header {
+    background-color: #222;
+    color: #fff;
+    font-weight: bold;
+    font-size: 6.6pt;
+    padding: 1.5px 4px;
+    margin-top: 3px;
+  }
+
+  table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+
+  td, th {
+    border: 0.5px solid #888;
+    padding: 1.2px 3px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  th {
+    background-color: #e5e5e5;
+    font-weight: bold;
+  }
+
+  td.w, th.w {
+    width: 36%;
+    text-align: left;
+  }
+
+  td.c, th.c {
+    width: 14%;
+    text-align: center;
+    font-weight: bold;
+    background-color: #f5f5f5;
+  }
+
+  /* Physical KAL-61 Frame Grid (1 Row label + 25 individual letter slots) */
+  .kal-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin-top: 2px;
+  }
+
+  .kal-table th, .kal-table td {
+    text-align: center;
+    padding: 1.8px 0;
+    font-size: 6.8pt;
+    border: 0.4px solid #999;
+  }
+
+  .kal-table th {
+    background-color: #dcdcdc;
+    font-size: 7.4pt;
+    border-bottom: 1.2px solid #000;
+    border-left: 1.2px solid #000;
+    border-right: 1.2px solid #000;
+  }
+
+  .kal-table .row-lbl {
+    font-weight: bold;
+    background-color: #e5e5e5;
+    width: 6.5%;
+    border-right: 1.2px solid #000;
+    border-left: 1.2px solid #000;
+  }
+
+  /* Thick vertical dividers matching physical KAL-61 column windows */
+  .kal-table td.grp-start {
+    border-left: 1.2px solid #000;
+  }
+  .kal-table td.grp-end {
+    border-right: 1.2px solid #000;
+  }
+
+  .notes {
+    margin-top: 4px;
+    border: 0.75px solid #333;
+    padding: 4px;
+    font-size: 6.3pt;
+    line-height: 1.25;
+    background-color: #fafafa;
+  }
+
+  .footer {
+    margin-top: 3px;
+    text-align: center;
+    font-size: 5.8pt;
+    color: #444;
+  }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <label>Days: <input type="number" id="inp-days" value="1" min="1" max="30"></label>
+  <label>Start Set #: <input type="number" id="inp-set" value="23" min="1" max="99"></label>
+  <label>Seed (optional): <input type="text" id="inp-seed" placeholder="Random"></label>
+  <button class="btn-gen" onclick="renderSheets()">Generate Sheets</button>
+  <button class="btn-print" onclick="window.print()">Print / Save A5 PDF</button>
+</div>
+
+<div id="sheets-container"></div>
+
+<script>
+const VOCABULARY = {
+  "1. NUMERALS & PROCEDURE": [
+    "0 (IN GROUP)", "0+ (STANDALONE)",
+    "1 (IN GROUP)", "1+ (STANDALONE)",
+    "2 (IN GROUP)", "2+ (STANDALONE)",
+    "3 (IN GROUP)", "3+ (STANDALONE)",
+    "4 (IN GROUP)", "4+ (STANDALONE)",
+    "5 (IN GROUP)", "5+ (STANDALONE)",
+    "6 (IN GROUP)", "6+ (STANDALONE)",
+    "7 (IN GROUP)", "7+ (STANDALONE)",
+    "8 (IN GROUP)", "8+ (STANDALONE)",
+    "9 (IN GROUP)", "9+ (STANDALONE)",
+    "NUMERALS (START)", "TEXT (RESUME)",
+    "PERIOD (.)", "SPELL (START/END)"
+  ],
+  "2. ROAD & VEHICLES": [
+    "BREAKDOWN", "BRIDGE", "CLOSED", "DETOUR", "EXIT",
+    "FUEL", "GATE", "MECHANIC", "OFF-ROAD", "PARK",
+    "REFILL", "ROAD", "TIRE", "TOW", "VEHICLE"
+  ],
+  "3. NAVIGATION & LOCATIONS": [
+    "ARRIVED", "CAMP", "CANYON", "CHECKPOINT", "CLIMB",
+    "COORDINATES", "CROSSING", "DELAYED", "DEPARTED", "EAST",
+    "ELEVATION", "GEAR", "JUNCTION", "KILOMETRE", "LAKE",
+    "LEFT", "NORTH", "PASS", "RETURN", "RIDGE",
+    "RIGHT", "ROUTE", "SOUTH", "SPRING", "STOP",
+    "SUMMIT", "TRAIL", "TRAILHEAD", "TURN", "WATER",
+    "WATERWAY", "WEST"
+  ],
+  "4. SAFETY, HAZARDS & SEVERE WEATHER": [
+    "DANGER", "EMERGENCY", "FIRST AID", "FLOODED", "INJURED",
+    "MISSING", "NIGHT", "RANGER", "ROCKSLIDE", "SNAKE",
+    "SNOW", "STORM", "WILDLIFE", "WITHDRAW"
+  ]
+};
+
+// Seedable PRNG (Mulberry32) so two people can reproduce identical sets
+function createRNG(seedStr) {
+  if (!seedStr) return Math.random;
+  let h = 1779033703 ^ seedStr.length;
+  for (let i = 0; i < seedStr.length; i++) {
+    h = Math.imul(h ^ seedStr.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return function() {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+}
+
+function shuffle(array, rng) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+// Generate trigraphs with minimum Hamming distance >= 2
+function generateHammingTrigraphs(count, rng) {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const all = [];
+  for (let a of letters) {
+    for (let b of letters) {
+      for (let c of letters) {
+        all.push(a + b + c);
+      }
+    }
+  }
+  shuffle(all, rng);
+
+  const selected = [];
+  for (const cand of all) {
+    let valid = true;
+    for (const ex of selected) {
+      let diff = 0;
+      if (cand[0] !== ex[0]) diff++;
+      if (cand[1] !== ex[1]) diff++;
+      if (cand[2] !== ex[2]) diff++;
+      if (diff < 2) {
+        valid = false;
+        break;
+      }
+    }
+    if (valid) {
+      selected.push(cand);
+      if (selected.length === count) return selected;
+    }
+  }
+  throw new Error("Unable to generate enough trigraphs.");
+}
+
+// Physical KAL-61 frame slot distribution per digit (0-9):
+// 0:4, 1:3, 2:3, 3:2, 4:2, 5:3, 6:2, 7:2, 8:2, 9:2 = 25 slots per row
+const KAL61_SLOT_WIDTHS = [4, 3, 3, 2, 2, 3, 2, 2, 2, 2];
+const ALPHABET_25 = "ABCDEFGHIJKLMNOPQRSTUVWXY".split(""); // Rows A-Y (no Z)
+
+function generateKAL61Rows(rng) {
+  return ALPHABET_25.map(rowLabel => {
+    const letters = shuffle([...ALPHABET_25], rng);
+    return { rowLabel, letters };
+  });
+}
+
+function buildDayHTML(dayNum, startSet, rng) {
+  const setNum = String(startSet + dayNum - 1).padStart(2, "0");
+  const allWords = Object.values(VOCABULARY).flat();
+  const trigraphs = generateHammingTrigraphs(allWords.length, rng);
+  const mapping = {};
+  allWords.forEach((w, idx) => mapping[w] = trigraphs[idx]);
+
+  // --- PAGE 1: ENCODE ---
+  let encodeHTML = "";
+  for (const [catName, words] of Object.entries(VOCABULARY)) {
+    encodeHTML += `<div class="cat-header">${catName}</div><table>`;
+    const half = Math.ceil(words.length / 2);
+    for (let i = 0; i < half; i++) {
+      const w1 = words[i];
+      const c1 = mapping[w1];
+      const w2 = words[i + half] || "";
+      const c2 = w2 ? mapping[w2] : "";
+      encodeHTML += `<tr>
+        <td class="w">${w1}</td><td class="c">${c1}</td>
+        <td class="w">${w2}</td><td class="c">${c2}</td>
+      </tr>`;
+    }
+    encodeHTML += `</table>`;
+  }
+
+  const page1 = `
+    <div class="page">
+      <div>
+        <div class="header">
+          <div class="title">KTC-600 OPERATIONS CODE — ENCODE</div>
+          <div class="meta">DAY ${dayNum} | SET ${setNum} | 24 HRS</div>
+        </div>
+        ${encodeHTML}
+      </div>
+      <div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div>
+    </div>
+  `;
+
+  // --- PAGE 2: DECODE ---
+  const decodePairs = Object.entries(mapping)
+    .map(([word, code]) => ({ code, word }))
+    .sort((a, b) => a.code.localeCompare(b.code));
+
+  const halfDec = Math.ceil(decodePairs.length / 2);
+  let decodeRowsHTML = "";
+  for (let i = 0; i < halfDec; i++) {
+    const p1 = decodePairs[i];
+    const p2 = decodePairs[i + halfDec] || { code: "", word: "" };
+    decodeRowsHTML += `<tr>
+      <td class="c">${p1.code}</td><td class="w">${p1.word}</td>
+      <td class="c">${p2.code}</td><td class="w">${p2.word}</td>
+    </tr>`;
+  }
+const page2 = `
+
+
+
+KTC-600 OPERATIONS CODE — DECODE
+DAY ${dayNum} | SET ${setNum} | ALPHABETICAL
+${decodeRowsHTML}
+CODE	PLAINTEXT	CODE	PLAINTEXT
+OVERLAND & TRAIL OPSEC EDITION — DESTROY AFTER USE
+
+`;
+// --- PAGE 3: KAL-61 / KTC-1400 FRAME SHEET ---
+const headerSpans = KAL61_SLOT_WIDTHS
+.map((span, digit) => <th colspan="${span}">${digit}</th>)
+.join("");
+// Precompute which slot indices start or end a digit column group
+const groupStartIndices = new Set();
+const groupEndIndices = new Set();
+let cursor = 0;
+for (const w of KAL61_SLOT_WIDTHS) {
+groupStartIndices.add(cursor);
+groupEndIndices.add(cursor + w - 1);
+cursor += w;
+}
+const kalRows = generateKAL61Rows(rng);
+const kalBodyHTML = (({ rowLabel, letters }) => {
+const cells = ((ch, idx) => {
+const classes = [];
+if (groupStartIndices.has(idx)) classes.push("grp-start");
+if (groupEndIndices.has(idx)) classes.push("grp-end");
+return <td class="${classes.join(" ")}">${ch}</td>;
+}).join("");
+return <tr><td class="row-lbl">${rowLabel}</td>${cells}</tr>;
+}).join("");
+const page3 = `
+
+
+
+KTC-1400 / KAL-61 NUMERAL CIPHER
+DAY ${dayNum} | SET ${setNum} | LIST ALPHA
+${headerSpans}
+${kalBodyHTML}
+KAL-61 FRAME ALIGNMENT: Insert sheet so rows A–Y align with the left window and digits 0–9 align with the top column slots (4-3-3-2-2-3-2-2-2-2).
+
+ENCIPHERMENT: Pick random start row + indicator letter. Encipher one digit per row stepping down (A→Y→A). Wrap with KTC-600 NUMERALS and TEXT codes.
+
+
+OVERLAND & TRAIL OPSEC EDITION — DESTROY AFTER USE
+
+`;
+return page1 + page2 + page3;
+}
+function renderSheets() {
+const days = Math.max(1, Math.min(30, parseInt(document.getElementById("inp-days").value, 10) || 1));
+const startSet = Math.max(1, parseInt(document.getElementById("inp-set").value, 10) || 23);
+const seedInput = document.getElementById("inp-seed").value.trim();
+const rng = createRNG(seedInput);
+const container = document.getElementById("sheets-container");
+let output = "";
+for (let d = 1; d <= days; d++) {
+output += buildDayHTML(d, startSet, rng);
+}
+container.innerHTML = output;
+}
+// Generate initial sheet on page load
+renderSheets();
