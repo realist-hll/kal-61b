@@ -62,6 +62,7 @@
       font-size: clamp(8px, 2.2vw, 11px);
     }
     .notes { font-size: 0.75rem; }
+    .radio-channels { font-size: 0.7rem; }
   }
   @media print {
     body { background: #fff; }
@@ -105,6 +106,14 @@
     margin-top: 4px; border: 0.75px solid #333; padding: 4px;
     font-size: 6.3pt; line-height: 1.25; background-color: #fafafa;
   }
+  .radio-section { font-size: 6.4pt; line-height: 1.15; }
+  .radio-section .cat-header { margin-top: 3px; }
+  .radio-section table { margin-top: 2px; }
+  .radio-section td, .radio-section th { padding: 1px 2px; }
+  .radio-assignments td:first-child { font-weight: bold; width: 20%; }
+  .radio-channels { font-size: 6pt; }
+  .radio-channels td { text-align: center; }
+  .radio-note { margin-top: 3px; font-size: 5.8pt; }
   .footer { margin-top: 3px; text-align: center; font-size: 5.8pt; color: #444; }
 </style>
 </head>
@@ -141,6 +150,10 @@ const VOCABULARY = {
   "4. SAFETY, HAZARDS & SEVERE WEATHER": [
     "DANGER", "EMERGENCY", "FIRST AID", "FLOODED", "INJURED", "MISSING", "NIGHT",
     "RANGER", "ROCKSLIDE", "SNAKE", "SNOW", "STORM", "WILDLIFE", "WITHDRAW"
+  ],
+  "5. RADIO PROCEDURE": [
+    "CALL SIGN", "RADIO CHECK", "SWITCH CHANNEL", "SWITCH FREQUENCY",
+    "SWITCH TO PRIMARY", "SWITCH TO SECONDARY", "SWITCH TO ALTERNATE"
   ]
 };
 
@@ -203,6 +216,43 @@ function generateKAL61Rows(rng) {
     rowLabel,
     letters: shuffle([...ALPHABET_25], rng)
   }));
+}
+
+function buildRadioPage(dayNum, setNum, mapping) {
+  const assignments = ["PRIMARY", "SECONDARY", "ALTERNATE 1", "ALTERNATE 2"];
+  let assignmentRows = "";
+  for (const role of assignments) {
+    assignmentRows += `<tr><td>${role}</td><td>&nbsp;</td><td>CH ____</td><td>________ MHz</td></tr>`;
+  }
+
+  const switchPhrases = [
+    "CALL SIGN", "RADIO CHECK", "SWITCH CHANNEL", "SWITCH FREQUENCY",
+    "SWITCH TO PRIMARY", "SWITCH TO SECONDARY", "SWITCH TO ALTERNATE"
+  ];
+  const switchRows = switchPhrases.map(phrase =>
+    `<tr><td>${phrase}</td><td class="c">${mapping[phrase]}</td></tr>`
+  ).join("");
+
+  let channelRows = "";
+  for (let row = 0; row < 20; row++) {
+    const channels = [row + 1, row + 21, row + 41, row + 61];
+    channelRows += `<tr>${channels.map(channel => `<td>${String(channel).padStart(2, "0")}</td>`).join("")}</tr>`;
+  }
+
+  return `<div class="page radio-section"><div>` +
+    `<div class="header"><div class="title">RADIO PLAN &amp; CALL SIGNS</div>` +
+    `<div class="meta">DAY ${dayNum} | SET ${setNum} | UHF CB</div></div>` +
+    `<div class="cat-header">CALL SIGNS</div>` +
+    `<table><tbody><tr><th>YOUR STATION</th><td>&nbsp;</td><th>TEAM / OTHER</th><td>&nbsp;</td></tr></tbody></table>` +
+    `<div class="cat-header">PRIMARY / SECONDARY FREQUENCIES &amp; ALTERNATES</div>` +
+    `<table class="radio-assignments"><thead><tr><th>ROLE</th><th>CALL SIGN</th><th>CHANNEL</th><th>FREQUENCY</th></tr></thead>` +
+    `<tbody>${assignmentRows}</tbody></table>` +
+    `<div class="cat-header">RADIO PROCEDURE CODES</div>` +
+    `<table><thead><tr><th>MEANING</th><th>CODE</th></tr></thead><tbody>${switchRows}</tbody></table>` +
+    `<div class="cat-header">80-CHANNEL UHF CB CHANNEL INDEX</div>` +
+    `<table class="radio-channels"><thead><tr><th>CH</th><th>CH</th><th>CH</th><th>CH</th></tr></thead><tbody>${channelRows}</tbody></table>` +
+    `<div class="radio-note"><strong>Frequency:</strong> Record the MHz values from the locally approved channel plan and your radio's channel chart; channel-frequency assignments and permitted use depend on jurisdiction and equipment. Follow local restrictions, including emergency and data-only channel rules. UHF CB transmissions are not private or encrypted; these procedure codes are not encryption.</div>` +
+    `</div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
 }
 
 function buildDayHTML(dayNum, startSet, rng) {
@@ -277,7 +327,7 @@ function buildDayHTML(dayNum, startSet, rng) {
     `<strong>ENCIPHERMENT:</strong> Pick random start row + indicator letter. Encipher one digit per row stepping down (A→Y→A). Wrap with KTC-600 NUMERALS and TEXT codes.</div></div>` +
     `<div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
 
-  return page1 + page2 + page3;
+  return page1 + page2 + page3 + buildRadioPage(dayNum, setNum, mapping);
 }
 
 function renderSheets() {
