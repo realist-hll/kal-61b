@@ -8,7 +8,7 @@
   @page { size: A5 portrait; margin: 7mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: "Courier New", Courier, monospace; background: #e9ecef; color: #111; font-size: 7.2pt; -webkit-text-size-adjust: 100%; }
-  .controls { background: #1f2937; color: #fff; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: center; font: 13px system-ui, -apple-system, sans-serif; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+  .controls { background: #1f2937; color: #fff; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: center; font: 13px system-ui, -apple-system, sans-serif; position: sticky; top: 0; z-index: 100; }
   .controls label { display: flex; align-items: center; gap: 6px; font-weight: 600; }
   .controls input { width: 75px; padding: 5px 8px; border-radius: 4px; border: 1px solid #4b5563; background: #111827; color: #fff; font-size: 13px; }
   .controls button { padding: 6px 14px; border: 0; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 13px; }
@@ -130,9 +130,15 @@ const KAL61_SLOT_WIDTHS = [4,3,3,2,2,3,2,2,2,2];
 const ALPHABET_25 = "ABCDEFGHIJKLMNOPQRSTUVWXY".split("");
 function generateKAL61Rows(rng) { return ALPHABET_25.map(rowLabel => ({ rowLabel, letters: shuffle([...ALPHABET_25], rng) })); }
 
-function buildRadioPage(dayNum, setNum, mapping, channelCodes) {
+function buildRadioPage(dayNum, setNum, mapping, channelCodes, rng) {
   const assignments = ["PRIMARY", "SECONDARY", "ALT PRI", "ALT SEC"];
-  const assignmentRows = assignments.map(role => `<tr><td>${role}</td><td>____________</td><td>CH ____</td><td>________ MHz</td></tr>`).join("");
+  // Choose four distinct channels with no designated common use, using the sheet's seeded RNG.
+  const availableChannels = shuffle(Array.from({ length: 80 }, (_, i) => i + 1).filter(ch => !channelCommonUse(ch)), rng);
+  const assignmentRows = assignments.map((role, i) => {
+    const ch = availableChannels[i];
+    const frequency = CHANNEL_FREQUENCIES_MHZ[ch - 1].toFixed(4);
+    return `<tr><td>${role}</td><td>${channelCodes[ch - 1]}</td><td>CH ${String(ch).padStart(2, "0")}</td><td>${frequency} MHz</td></tr>`;
+  }).join("");
   const switchRows = ["SWITCH CHANNEL", "SWITCH FREQUENCY", "SWITCH TO PRIMARY", "SWITCH TO SECONDARY", "SWITCH TO ALTERNATE"]
     .map(phrase => `<tr><td>${phrase}</td><td class="c">${mapping[phrase]}</td></tr>`).join("");
   const panels = [];
@@ -148,7 +154,7 @@ function buildRadioPage(dayNum, setNum, mapping, channelCodes) {
     `<div class="header"><div class="title">RADIO PLAN &amp; 80-CHANNEL UHF CB INDEX</div><div class="meta">DAY ${dayNum} | SET ${setNum}</div></div>` +
     `<div class="cat-header">KTC-600 CODE / PRIMARY, SECONDARY &amp; ALTERNATES</div>` +
     `<table><tbody><tr><th>YOUR CALL SIGN</th><td>____________</td><th>TEAM CALL SIGN</th><td>____________</td></tr></tbody></table>` +
-    `<table class="radio-assignments"><thead><tr><th>ROLE</th><th>CALL SIGN</th><th>CHANNEL</th><th>FREQUENCY</th></tr></thead><tbody>${assignmentRows}</tbody></table>` +
+    `<table class="radio-assignments"><thead><tr><th>ROLE</th><th>KTC-600 CODE</th><th>CHANNEL</th><th>FREQUENCY</th></tr></thead><tbody>${assignmentRows}</tbody></table>` +
     `<div class="cat-header">RADIO PROCEDURE CODES</div><table><thead><tr><th>MEANING</th><th>CODE</th></tr></thead><tbody>${switchRows}</tbody></table>` +
     `<div class="cat-header">CHANNEL | KTC-600 CODE | FREQUENCY | COMMON USE</div>` +
     `<div class="channel-index-grid">${panels.join("")}</div>` +
@@ -186,8 +192,8 @@ function buildDayHTML(dayNum, startSet, rng) {
     const cells = letters.map((ch,index) => `<td class="${[starts.has(index) ? "grp-start" : "", ends.has(index) ? "grp-end" : ""].filter(Boolean).join(" ")}">${ch}</td>`).join("");
     return `<tr><td class="row-lbl">${rowLabel}</td>${cells}</tr>`;
   }).join("");
-  const page3 = `<div class="page"><div><div class="header"><div class="title">KTC-1400 / KAL-61 NUMERAL CIPHER</div><div class="meta">DAY ${dayNum} | SET ${setNum} | LIST ALPHA</div></div><table class="kal-table"><thead><tr><th class="row-lbl"></th>${headerSpans}</tr></thead><tbody>${kalBodyHTML}</tbody></table><div class="notes"><strong>KAL-61 FRAME ALIGNMENT:</strong> Insert sheet so rows A–Y align with the left window and digits 0–9 align with the top column slots (4-3-3-2-2-3-2-2-2-2).<br><br><strong>ENCIPHERMENT:</strong> Pick random start row + indicator letter. Encipher one digit per row stepping down (A→Y→A). Wrap with KTC-600 NUMERALS and TEXT codes.</div></div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
-  return page1 + page2 + page3 + buildRadioPage(dayNum, setNum, mapping, channelCodes);
+  const page3 = `<div class="page"><div><div class="header"><div class="title">KTC-1400 / KAL-61 NUMERAL CIPHER</div><div class="meta">DAY ${dayNum} | SET ${setNum} | LIST ALPHA</div></div><table class="kal-table"><thead><tr><th class="row-lbl"></th>${headerSpans}</tr></thead><tbody>${kalBodyHTML}</tbody></table><div class="notes"><strong>KAL-61 FRAME ALIGNMENT:</strong> Insert sheet so rows A–Y align with the left window and digits 0–9 align with the top column slots (4-3-3-2-2-3-2-2-2-2).<br><br><strong>ENCIPHERMENT:</strong> Pick random start row + indicator letter. Encipher one digit per row stepping down (A→Y). Wrap with KTC-600 NUMERALS and TEXT codes.</div></div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
+  return page1 + page2 + page3 + buildRadioPage(dayNum, setNum, mapping, channelCodes, rng);
 }
 function renderSheets() {
   const days = Math.max(1, Math.min(30, parseInt(document.getElementById("inp-days").value, 10) || 1));
