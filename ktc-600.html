@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KTC-600 &amp; KAL-61 (KTC-1400) Multi-Day Pocket Sheet Generator</title>
+<title>KTC-600 Multi-Day Pocket Sheet Generator</title>
 <style>
   @page { size: A5 portrait; margin: 7mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -23,12 +23,6 @@
   td, th { border: .5px solid #888; padding: 1.2px 3px; overflow: hidden; white-space: nowrap; }
   th { background: #e5e5e5; font-weight: bold; }
   td.w, th.w { width: 36%; text-align: left; } td.c, th.c { width: 14%; text-align: center; font-weight: bold; background: #f5f5f5; }
-  .kal-table { table-layout: fixed; border-collapse: collapse; margin-top: 2px; }
-  .kal-table th, .kal-table td { text-align: center; padding: 1.8px 0; font-size: 6.8pt; border: .4px solid #999; }
-  .kal-table th { background: #dcdcdc; font-size: 7.4pt; border-bottom: 1.2px solid #000; border-left: 1.2px solid #000; border-right: 1.2px solid #000; }
-  .kal-table .row-lbl { font-weight: bold; background: #e5e5e5; width: 6.5%; border-right: 1.2px solid #000; border-left: 1.2px solid #000; }
-  .kal-table td.grp-start { border-left: 1.2px solid #000; } .kal-table td.grp-end { border-right: 1.2px solid #000; }
-  .notes { margin-top: 4px; border: .75px solid #333; padding: 4px; font-size: 6.3pt; line-height: 1.25; background: #fafafa; }
   .footer { margin-top: 3px; text-align: center; font-size: 5.8pt; color: #444; }
   .radio-section { width: min(100%, 148mm); min-width: 0; font-size: 6.1pt; line-height: 1.05; }
   .radio-section .header { margin-bottom: 2px; } .radio-section .title { font-size: 8pt; } .radio-section .meta { font-size: 6pt; }
@@ -55,8 +49,6 @@
     .page { width: 100%; min-height: 0; padding: 12px; } .header { align-items: flex-start; flex-wrap: wrap; }
     .title { font-size: .95rem; } .meta { font-size: .75rem; text-align: left; } .cat-header { font-size: .8rem; }
     td, th { padding: 3px 4px; white-space: normal; overflow-wrap: anywhere; }
-    .kal-table th, .kal-table td { padding: 3px 0; font-size: clamp(8px, 2.2vw, 11px); }
-    .notes { font-size: .75rem; }
     .radio-section { width: 100%; overflow-x: auto; }
     .radio-section .channel-index-grid { min-width: 0; width: 100%; }
     .radio-section .channel-index th, .radio-section .channel-index td { white-space: nowrap; padding: 1px; }
@@ -126,9 +118,6 @@ function generateHammingTrigraphs(count, rng) {
   }
   throw new Error("Unable to generate enough trigraphs.");
 }
-const KAL61_SLOT_WIDTHS = [4,3,3,2,2,3,2,2,2,2];
-const ALPHABET_25 = "ABCDEFGHIJKLMNOPQRSTUVWXY".split("");
-function generateKAL61Rows(rng) { return ALPHABET_25.map(rowLabel => ({ rowLabel, letters: shuffle([...ALPHABET_25], rng) })); }
 
 function buildRadioPage(dayNum, setNum, mapping, channelCodes, rng) {
   const assignments = ["PRIMARY", "SECONDARY", "ALT PRI", "ALT SEC"];
@@ -185,15 +174,7 @@ function buildDayHTML(dayNum, startSet, rng) {
     decodeRowsHTML += `<tr><td class="c">${first.code}</td><td class="w">${first.word}</td><td class="c">${second.code}</td><td class="w">${second.word}</td></tr>`;
   }
   const page2 = `<div class="page"><div><div class="header"><div class="title">KTC-600 OPERATIONS CODE — DECODE</div><div class="meta">DAY ${dayNum} | SET ${setNum} | ALPHABETICAL</div></div><table><thead><tr><th class="c">CODE</th><th class="w">PLAINTEXT</th><th class="c">CODE</th><th class="w">PLAINTEXT</th></tr></thead><tbody>${decodeRowsHTML}</tbody></table></div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
-  const headerSpans = KAL61_SLOT_WIDTHS.map((span,digit) => `<th colspan="${span}">${digit}</th>`).join("");
-  const starts = new Set(), ends = new Set(); let cursor = 0;
-  for (const width of KAL61_SLOT_WIDTHS) { starts.add(cursor); ends.add(cursor + width - 1); cursor += width; }
-  const kalBodyHTML = generateKAL61Rows(rng).map(({rowLabel,letters}) => {
-    const cells = letters.map((ch,index) => `<td class="${[starts.has(index) ? "grp-start" : "", ends.has(index) ? "grp-end" : ""].filter(Boolean).join(" ")}">${ch}</td>`).join("");
-    return `<tr><td class="row-lbl">${rowLabel}</td>${cells}</tr>`;
-  }).join("");
-  const page3 = `<div class="page"><div><div class="header"><div class="title">KTC-1400 / KAL-61 NUMERAL CIPHER</div><div class="meta">DAY ${dayNum} | SET ${setNum} | LIST ALPHA</div></div><table class="kal-table"><thead><tr><th class="row-lbl"></th>${headerSpans}</tr></thead><tbody>${kalBodyHTML}</tbody></table><div class="notes"><strong>KAL-61 FRAME ALIGNMENT:</strong> Insert sheet so rows A–Y align with the left window and digits 0–9 align with the top column slots (4-3-3-2-2-3-2-2-2-2).<br><br><strong>ENCIPHERMENT:</strong> Pick random start row + indicator letter. Encipher one digit per row stepping down (A→Y). Wrap with KTC-600 NUMERALS and TEXT codes.</div></div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
-  return page1 + page2 + page3 + buildRadioPage(dayNum, setNum, mapping, channelCodes, rng);
+  return page1 + page2 + buildRadioPage(dayNum, setNum, mapping, channelCodes, rng);
 }
 function renderSheets() {
   const days = Math.max(1, Math.min(30, parseInt(document.getElementById("inp-days").value, 10) || 1));
