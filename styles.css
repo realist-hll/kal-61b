@@ -406,7 +406,6 @@ select {
 @media print {
   .yellow-slider,
   .compact-panel,
-  .kal-case,
   .kal-stamping,
   .sheet-footer {
     display: none !important;
@@ -427,7 +426,8 @@ select {
   .sheet-header {
     color: #111;
   }
-
+  
+  .kal-case,
   .kal-window {
     margin: 0;
     padding: 0;
