@@ -402,3 +402,43 @@ select {
   .compact-panel { padding: 8px; }
   .readout-bar { min-width: 100%; }
 }
+
+@media print {
+  .yellow-slider,
+  .compact-panel,
+  .sheet-footer {
+    display: none !important;
+  }
+
+  body {
+    display: block;
+    padding: 0;
+    background: #fff;
+    color: #111;
+  }
+
+  .device-wrapper {
+    width: 100%;
+    max-width: none;
+  }
+
+  .kal-case,
+  .kal-window {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
+    color: #111;
+  }
+
+  .kal-stamping,
+  .sheet-header {
+    color: #111;
+  }
+
+  .grid-stage {
+    padding: 0;
+  }
+}
