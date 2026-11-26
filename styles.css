@@ -406,6 +406,9 @@ select {
 @media print {
   .yellow-slider,
   .compact-panel,
+  .kal-case,
+  .kal-window,
+  .kal-stamping,
   .sheet-footer {
     display: none !important;
   }
@@ -422,18 +425,6 @@ select {
     max-width: none;
   }
 
-  .kal-case,
-  .kal-window {
-    margin: 0;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
-    background: #fff;
-    color: #111;
-  }
-
-  .kal-stamping,
   .sheet-header {
     color: #111;
   }
