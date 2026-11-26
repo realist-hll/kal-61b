@@ -407,7 +407,6 @@ select {
   .yellow-slider,
   .compact-panel,
   .kal-case,
-  .kal-window,
   .kal-stamping,
   .sheet-footer {
     display: none !important;
@@ -428,8 +427,29 @@ select {
   .sheet-header {
     color: #111;
   }
+  
+  tr.cipher-row:nth-child(even) td,
+  tr.cipher-row td.row-label,
+  tr.heading-row th,
+  .letter-group span {
+    background: #fff !important;
+  }
 
+  tr.cipher-row td,
+  tr.heading-row th,
+  .letter-group span,
+  .hdr-letters {
+    color: #111 !important;
+  }
+
+  .kal-window,
   .grid-stage {
-    padding: 0;
+    background: #fff;
+  }
+  
+  tr.cipher-row:hover td,
+  .letter-group span:hover,
+  .letter-group span.selected {
+    background: #fff !important;
   }
 }
