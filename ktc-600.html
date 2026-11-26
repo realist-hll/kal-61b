@@ -1,208 +1,449 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KTC-600 &amp; KAL-61 (KTC-1400) Multi-Day Pocket Sheet Generator</title>
-<style>
-  @page { size: A5 portrait; margin: 7mm; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: "Courier New", Courier, monospace; background: #e9ecef; color: #111; font-size: 7.2pt; -webkit-text-size-adjust: 100%; }
-  .controls { background: #1f2937; color: #fff; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: center; font: 13px system-ui, -apple-system, sans-serif; position: sticky; top: 0; z-index: 100; }
-  .controls label { display: flex; align-items: center; gap: 6px; font-weight: 600; }
-  .controls input { width: 75px; padding: 5px 8px; border-radius: 4px; border: 1px solid #4b5563; background: #111827; color: #fff; font-size: 13px; }
-  .controls button { padding: 6px 14px; border: 0; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 13px; }
-  .btn-gen { background: #2563eb; color: #fff; } .btn-print { background: #10b981; color: #fff; }
-  #sheets-container { display: flex; flex-direction: column; align-items: center; padding: 16px 10px; gap: 16px; }
-  .page { width: min(100%, 148mm); min-height: 210mm; padding: 7mm; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.18); page-break-after: always; break-after: page; display: flex; flex-direction: column; justify-content: space-between; }
-  .page:last-child { page-break-after: auto; break-after: auto; }
-  .header { border-bottom: 1.5px solid #000; padding-bottom: 2px; margin-bottom: 3px; display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
-  .title { font-weight: bold; font-size: 8.8pt; letter-spacing: .2px; } .meta { font-size: 6.8pt; font-weight: bold; text-align: right; }
-  .cat-header { background: #222; color: #fff; font-weight: bold; font-size: 6.6pt; padding: 1.5px 4px; margin-top: 3px; }
-  table { width: 100%; table-layout: fixed; border-collapse: collapse; }
-  td, th { border: .5px solid #888; padding: 1.2px 3px; overflow: hidden; white-space: nowrap; }
-  th { background: #e5e5e5; font-weight: bold; }
-  td.w, th.w { width: 36%; text-align: left; } td.c, th.c { width: 14%; text-align: center; font-weight: bold; background: #f5f5f5; }
-  .kal-table { table-layout: fixed; border-collapse: collapse; margin-top: 2px; }
-  .kal-table th, .kal-table td { text-align: center; padding: 1.8px 0; font-size: 6.8pt; border: .4px solid #999; }
-  .kal-table th { background: #dcdcdc; font-size: 7.4pt; border-bottom: 1.2px solid #000; border-left: 1.2px solid #000; border-right: 1.2px solid #000; }
-  .kal-table .row-lbl { font-weight: bold; background: #e5e5e5; width: 6.5%; border-right: 1.2px solid #000; border-left: 1.2px solid #000; }
-  .kal-table td.grp-start { border-left: 1.2px solid #000; } .kal-table td.grp-end { border-right: 1.2px solid #000; }
-  .notes { margin-top: 4px; border: .75px solid #333; padding: 4px; font-size: 6.3pt; line-height: 1.25; background: #fafafa; }
-  .footer { margin-top: 3px; text-align: center; font-size: 5.8pt; color: #444; }
-  .radio-section { width: min(100%, 148mm); min-width: 0; font-size: 6.1pt; line-height: 1.05; }
-  .radio-section .header { margin-bottom: 2px; } .radio-section .title { font-size: 8pt; } .radio-section .meta { font-size: 6pt; }
-  .radio-section .cat-header { margin-top: 2px; padding: 1px 3px; font-size: 6pt; }
-  .radio-section table { margin-top: 1px; min-width: 0; }
-  .radio-section td, .radio-section th { padding: 1px 2px; }
-  .radio-assignments td:first-child { font-weight: bold; }
-  .radio-note { margin-top: 2px; font-size: 5.2pt; line-height: 1.05; }
-  .channel-index-grid { display: grid; width: 100%; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 4px; }
-  .channel-index { min-width: 0; width: 100%; font-size: 4.7pt; line-height: 1; }
-  .channel-index table { width: 100%; min-width: 0; margin: 0; border-collapse: collapse; table-layout: fixed; }
-  .channel-index th, .channel-index td { border: .6px solid #667085; padding: 1px; white-space: nowrap; }
-  .channel-index th { font-size: 4.5pt; color: #111827; background: #cbd5e1; }
-  .channel-index th:nth-child(1) { width: 10%; } .channel-index th:nth-child(2) { width: 17%; }
-  .channel-index th:nth-child(3) { width: 33%; } .channel-index th:nth-child(4) { width: 40%; }
-  .channel-index td:nth-child(1), .channel-index td:nth-child(2), .channel-index td:nth-child(3) { text-align: center; }
-  .channel-index td:nth-child(2) { font-weight: bold; }
-  .channel-index tbody tr:nth-child(even) td { background: #e8edf3; }
-  .channel-index tbody tr:nth-child(odd) td { background: #fff; }
-  .channel-index tbody td:first-child { background: #d4deea !important; font-weight: bold; }
-  .channel-index tbody td:nth-child(2) { background: #f0f3f7; }
-  @media screen and (max-width: 600px) {
-    body { font-size: 12px; } #sheets-container { padding: 10px 8px; gap: 12px; }
-    .page { width: 100%; min-height: 0; padding: 12px; } .header { align-items: flex-start; flex-wrap: wrap; }
-    .title { font-size: .95rem; } .meta { font-size: .75rem; text-align: left; } .cat-header { font-size: .8rem; }
-    td, th { padding: 3px 4px; white-space: normal; overflow-wrap: anywhere; }
-    .kal-table th, .kal-table td { padding: 3px 0; font-size: clamp(8px, 2.2vw, 11px); }
-    .notes { font-size: .75rem; }
-    .radio-section { width: 100%; overflow-x: auto; }
-    .radio-section .channel-index-grid { min-width: 0; width: 100%; }
-    .radio-section .channel-index th, .radio-section .channel-index td { white-space: nowrap; padding: 1px; }
-    .radio-section .channel-index { font-size: 4.3pt; }
-  }
-  @media print {
-    body { background: #fff; } .controls { display: none !important; }
-    #sheets-container { padding: 0; gap: 0; display: block; }
-    .page { width: 100%; height: 196mm; min-height: 196mm; max-height: 196mm; padding: 0; box-shadow: none; }
-    .channel-index th, .channel-index td { border: .6px solid #667085 !important; }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KTC-600 Multi-Day Pocket Sheet Generator</title>
+  <style>
+    @page { size: A5 portrait; margin: 7mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Courier New", Courier, monospace;
+      background: #e9ecef;
+      color: #111;
+      font-size: 7.2pt;
+      -webkit-text-size-adjust: 100%;
+    }
+    .controls {
+      background: #1f2937;
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+      justify-content: center;
+      font: 13px system-ui, -apple-system, sans-serif;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .controls label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+    .controls input {
+      width: 75px;
+      padding: 5px 8px;
+      border-radius: 4px;
+      border: 1px solid #4b5563;
+      background: #111827;
+      color: #fff;
+      font-size: 13px;
+    }
+    .controls button {
+      padding: 6px 14px;
+      border: 0;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-gen { background: #2563eb; color: #fff; }
+    .btn-print { background: #10b981; color: #fff; }
+    #sheets-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 10px;
+      gap: 16px;
+    }
+    .page {
+      width: min(100%, 148mm);
+      min-height: 210mm;
+      padding: 7mm;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+      page-break-after: always;
+      break-after: page;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .page:last-child { page-break-after: auto; break-after: auto; }
+    .header {
+      border-bottom: 1.5px solid #000;
+      padding-bottom: 2px;
+      margin-bottom: 3px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .title { font-weight: bold; font-size: 8.8pt; letter-spacing: .2px; }
+    .meta { font-size: 6.8pt; font-weight: bold; text-align: right; }
+    .cat-header {
+      background: #222;
+      color: #fff;
+      font-weight: bold;
+      font-size: 6.6pt;
+      padding: 1.5px 4px;
+      margin-top: 3px;
+    }
+    table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+    td, th {
+      border: .5px solid #888;
+      padding: 1.2px 3px;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    th { background: #e5e5e5; font-weight: bold; }
+    td.w, th.w { width: 36%; text-align: left; }
+    td.c, th.c {
+      width: 14%;
+      text-align: center;
+      font-weight: bold;
+      background: #f5f5f5;
+    }
+    .footer { margin-top: 3px; text-align: center; font-size: 5.8pt; color: #444; }
+    .radio-section {
+      width: min(100%, 148mm);
+      min-width: 0;
+      font-size: 6.1pt;
+      line-height: 1.05;
+    }
+    .radio-section .header { margin-bottom: 2px; }
+    .radio-section .title { font-size: 8pt; }
+    .radio-section .meta { font-size: 6pt; }
+    .radio-section .cat-header { margin-top: 2px; padding: 1px 3px; font-size: 6pt; }
+    .radio-section table { margin-top: 1px; min-width: 0; }
+    .radio-section td, .radio-section th { padding: 1px 2px; }
+    .radio-assignments td:first-child { font-weight: bold; }
+    .radio-note { margin-top: 2px; font-size: 5.2pt; line-height: 1.05; }
+    .channel-index-grid {
+      display: grid;
+      width: 100%;
+      min-width: 0;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 2px 4px;
+    }
+    .channel-index { min-width: 0; width: 100%; font-size: 4.7pt; line-height: 1; }
+    .channel-index table {
+      width: 100%;
+      min-width: 0;
+      margin: 0;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    .channel-index th, .channel-index td {
+      border: .6px solid #667085;
+      padding: 1px;
+      white-space: nowrap;
+    }
+    .channel-index th { font-size: 4.5pt; color: #111827; background: #cbd5e1; }
+    .channel-index th:nth-child(1) { width: 10%; }
+    .channel-index th:nth-child(2) { width: 17%; }
+    .channel-index th:nth-child(3) { width: 33%; }
+    .channel-index th:nth-child(4) { width: 40%; }
+    .channel-index td:nth-child(1),
+    .channel-index td:nth-child(2),
+    .channel-index td:nth-child(3) { text-align: center; }
+    .channel-index td:nth-child(2) { font-weight: bold; }
+    .channel-index tbody tr:nth-child(even) td { background: #e8edf3; }
+    .channel-index tbody tr:nth-child(odd) td { background: #fff; }
+    .channel-index tbody td:first-child {
+      background: #d4deea !important;
+      font-weight: bold;
+    }
+    .channel-index tbody td:nth-child(2) { background: #f0f3f7; }
+    @media screen and (max-width: 600px) {
+      body { font-size: 12px; }
+      #sheets-container { padding: 10px 8px; gap: 12px; }
+      .page { width: 100%; min-height: 0; padding: 12px; }
+      .header { align-items: flex-start; flex-wrap: wrap; }
+      .title { font-size: .95rem; }
+      .meta { font-size: .75rem; text-align: left; }
+      .cat-header { font-size: .8rem; }
+      td, th { padding: 3px 4px; white-space: normal; overflow-wrap: anywhere; }
+      .radio-section { width: 100%; overflow-x: auto; }
+      .radio-section .channel-index-grid { min-width: 0; width: 100%; }
+      .radio-section .channel-index th,
+      .radio-section .channel-index td { white-space: nowrap; padding: 1px; }
+      .radio-section .channel-index { font-size: 4.3pt; }
+    }
+    @media print {
+      body { background: #fff; }
+      .controls { display: none !important; }
+      #sheets-container { padding: 0; gap: 0; display: block; }
+      .page {
+        width: 100%;
+        height: 196mm;
+        min-height: 196mm;
+        max-height: 196mm;
+        padding: 0;
+        box-shadow: none;
+      }
+      .channel-index th, .channel-index td { border: .6px solid #667085 !important; }
+    }
+  </style>
 </head>
 <body>
-<div class="controls">
-  <label>Days: <input type="number" id="inp-days" value="1" min="1" max="30"></label>
-  <label>Start Set #: <input type="number" id="inp-set" value="23" min="1" max="99"></label>
-  <label>Seed (optional): <input type="text" id="inp-seed" placeholder="Random"></label>
-  <button class="btn-gen" type="button" onclick="renderSheets()">Generate Sheets</button>
-  <button class="btn-print" type="button" onclick="window.print()">Print / Save A5 PDF</button>
-</div>
-<div id="sheets-container"></div>
-<script>
-const VOCABULARY = {
-  "1. NUMERALS & PROCEDURE": ["0 (IN GROUP)", "0+ (STANDALONE)", "1 (IN GROUP)", "1+ (STANDALONE)", "2 (IN GROUP)", "2+ (STANDALONE)", "3 (IN GROUP)", "3+ (STANDALONE)", "4 (IN GROUP)", "4+ (STANDALONE)", "5 (IN GROUP)", "5+ (STANDALONE)", "6 (IN GROUP)", "6+ (STANDALONE)", "7 (IN GROUP)", "7+ (STANDALONE)", "8 (IN GROUP)", "8+ (STANDALONE)", "9 (IN GROUP)", "9+ (STANDALONE)", "NUMERALS (START)", "TEXT (RESUME)", "PERIOD (.)", "SPELL (START/END)"],
-  "2. ROAD & VEHICLES": ["BREAKDOWN", "BRIDGE", "CLOSED", "DETOUR", "EXIT", "FUEL", "GATE", "MECHANIC", "OFF-ROAD", "PARK", "REFILL", "ROAD", "TIRE", "TOW", "VEHICLE"],
-  "3. NAVIGATION & LOCATIONS": ["ARRIVED", "CAMP", "CANYON", "CHECKPOINT", "CLIMB", "COORDINATES", "CROSSING", "DELAYED", "DEPARTED", "EAST", "ELEVATION", "GEAR", "JUNCTION", "KILOMETRE", "LAKE", "LEFT", "NORTH", "PASS", "RETURN", "RIDGE", "RIGHT", "ROUTE", "SOUTH", "SPRING", "STOP", "SUMMIT", "TRAIL", "TRAILHEAD", "TURN", "WATER", "WATERWAY", "WEST"],
-  "4. SAFETY, HAZARDS & SEVERE WEATHER": ["DANGER", "EMERGENCY", "FIRST AID", "FLOODED", "INJURED", "MISSING", "NIGHT", "RANGER", "ROCKSLIDE", "SNAKE", "SNOW", "STORM", "WILDLIFE", "WITHDRAW"],
-  "5. RADIO PROCEDURE": ["SWITCH CHANNEL", "SWITCH FREQUENCY", "SWITCH TO PRIMARY", "SWITCH TO SECONDARY", "SWITCH TO ALTERNATE"]
-};
-const CHANNEL_FREQUENCIES_MHZ = [
-  476.4250,476.4500,476.4750,476.5000,476.5250,476.5500,476.5750,476.6000,476.6250,476.6500,476.6750,476.7000,476.7250,476.7500,476.7750,476.8000,476.8250,476.8500,476.8750,476.9000,476.9250,476.9500,476.9750,477.0000,477.0250,477.0500,477.0750,477.1000,477.1250,477.1500,477.1750,477.2000,477.2250,477.2500,477.2750,477.3000,477.3250,477.3500,477.3750,477.4000,
-  476.4375,476.4625,476.4875,476.5125,476.5375,476.5625,476.5875,476.6125,476.6375,476.6625,476.6875,476.7125,476.7375,476.7625,476.7875,476.8125,476.8375,476.8625,476.8875,476.9125,476.9250,476.9375,476.9500,476.9875,477.0125,477.0375,477.0625,477.0875,477.1125,477.1375,477.1875,477.2125,477.2375,477.2625,477.2875,477.3125,477.3375,477.3625,477.3875,477.4125
-];
-function channelCommonUse(ch) {
-  if (ch === 5 || ch === 35) return "EMERG ONLY";
-  if (ch === 11) return "CALLING";
-  if (ch === 10) return "4WD/CONVOY";
-  if (ch === 18) return "CAMPERS";
-  if (ch === 22 || ch === 23) return "DATA ONLY";
-  if (ch === 40) return "TRUCKING";
-  if (ch >= 1 && ch <= 8) return `RPT IN ${ch}`;
-  if (ch >= 31 && ch <= 38) return `RPT OUT ${ch - 30}`;
-  if (ch >= 41 && ch <= 48) return `RPT IN ${ch}`;
-  if (ch >= 71 && ch <= 78) return `RPT OUT ${ch - 30}`;
-  if (ch >= 61 && ch <= 63) return "RESERVED";
-  return "";
-}
-function createRNG(seed) {
-  if (!seed) return Math.random;
-  let h = 1779033703 ^ seed.length;
-  for (let i = 0; i < seed.length; i++) { h = Math.imul(h ^ seed.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
-  return function() { h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); return ((h ^= h >>> 16) >>> 0) / 4294967296; };
-}
-function shuffle(array, rng) {
-  for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; }
-  return array;
-}
-function generateHammingTrigraphs(count, rng) {
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ", all = [];
-  for (const a of letters) for (const b of letters) for (const c of letters) all.push(a + b + c);
-  shuffle(all, rng); const selected = [];
-  for (const candidate of all) {
-    if (selected.every(existing => Number(candidate[0] !== existing[0]) + Number(candidate[1] !== existing[1]) + Number(candidate[2] !== existing[2]) >= 2)) {
-      selected.push(candidate); if (selected.length === count) return selected;
-    }
-  }
-  throw new Error("Unable to generate enough trigraphs.");
-}
-const KAL61_SLOT_WIDTHS = [4,3,3,2,2,3,2,2,2,2];
-const ALPHABET_25 = "ABCDEFGHIJKLMNOPQRSTUVWXY".split("");
-function generateKAL61Rows(rng) { return ALPHABET_25.map(rowLabel => ({ rowLabel, letters: shuffle([...ALPHABET_25], rng) })); }
+  <div class="controls">
+    <label>Days: <input type="number" id="inp-days" value="1" min="1" max="30"></label>
+    <label>Start Set #: <input type="number" id="inp-set" value="23" min="1" max="99"></label>
+    <label>Seed (optional): <input type="text" id="inp-seed" placeholder="Random"></label>
+    <button class="btn-gen" type="button" onclick="renderSheets()">Generate Sheets</button>
+    <button class="btn-print" type="button" onclick="window.print()">Print / Save A5 PDF</button>
+  </div>
+  <div id="sheets-container"></div>
+  <script>
+    const VOCABULARY = {
+      "1. NUMERALS & PROCEDURE": [
+        "0 (IN GROUP)", "0+ (STANDALONE)", "1 (IN GROUP)", "1+ (STANDALONE)",
+        "2 (IN GROUP)", "2+ (STANDALONE)", "3 (IN GROUP)", "3+ (STANDALONE)",
+        "4 (IN GROUP)", "4+ (STANDALONE)", "5 (IN GROUP)", "5+ (STANDALONE)",
+        "6 (IN GROUP)", "6+ (STANDALONE)", "7 (IN GROUP)", "7+ (STANDALONE)",
+        "8 (IN GROUP)", "8+ (STANDALONE)", "9 (IN GROUP)", "9+ (STANDALONE)",
+        "NUMERALS (START)", "TEXT (RESUME)", "PERIOD (.)", "SPELL (START/END)"
+      ],
+      "2. ROAD & VEHICLES": [
+        "BREAKDOWN", "BRIDGE", "CLOSED", "DETOUR", "EXIT", "FUEL", "GATE",
+        "MECHANIC", "OFF-ROAD", "PARK", "REFILL", "ROAD", "TIRE", "TOW", "VEHICLE"
+      ],
+      "3. NAVIGATION & LOCATIONS": [
+        "ARRIVED", "CAMP", "CANYON", "CHECKPOINT", "CLIMB", "COORDINATES",
+        "CROSSING", "DELAYED", "DEPARTED", "EAST", "ELEVATION", "GEAR",
+        "JUNCTION", "KILOMETRE", "LAKE", "LEFT", "NORTH", "PASS", "RETURN",
+        "RIDGE", "RIGHT", "ROUTE", "SOUTH", "SPRING", "STOP", "SUMMIT",
+        "TRAIL", "TRAILHEAD", "TURN", "WATER", "WATERWAY", "WEST"
+      ],
+      "4. SAFETY, HAZARDS & SEVERE WEATHER": [
+        "DANGER", "EMERGENCY", "FIRST AID", "FLOODED", "INJURED", "MISSING",
+        "NIGHT", "RANGER", "ROCKSLIDE", "SNAKE", "SNOW", "STORM", "WILDLIFE",
+        "WITHDRAW"
+      ],
+      "5. RADIO PROCEDURE": [
+        "SWITCH CHANNEL", "SWITCH FREQUENCY", "SWITCH TO PRIMARY",
+        "SWITCH TO SECONDARY", "SWITCH TO ALTERNATE"
+      ]
+    };
 
-function buildRadioPage(dayNum, setNum, mapping, channelCodes, rng) {
-  const assignments = ["PRIMARY", "SECONDARY", "ALT PRI", "ALT SEC"];
-  // Choose four distinct channels with no designated common use, using the sheet's seeded RNG.
-  const availableChannels = shuffle(Array.from({ length: 80 }, (_, i) => i + 1).filter(ch => !channelCommonUse(ch)), rng);
-  const assignmentRows = assignments.map((role, i) => {
-    const ch = availableChannels[i];
-    const frequency = CHANNEL_FREQUENCIES_MHZ[ch - 1].toFixed(4);
-    return `<tr><td>${role}</td><td>${channelCodes[ch - 1]}</td><td>CH ${String(ch).padStart(2, "0")}</td><td>${frequency} MHz</td></tr>`;
-  }).join("");
-  const switchRows = ["SWITCH CHANNEL", "SWITCH FREQUENCY", "SWITCH TO PRIMARY", "SWITCH TO SECONDARY", "SWITCH TO ALTERNATE"]
-    .map(phrase => `<tr><td>${phrase}</td><td class="c">${mapping[phrase]}</td></tr>`).join("");
-  const panels = [];
-  for (let start = 1; start <= 80; start += 20) {
-    const rows = [];
-    for (let ch = start; ch < start + 20; ch++) {
-      const use = channelCommonUse(ch);
-      rows.push(`<tr><td>${String(ch).padStart(2, "0")}</td><td>${channelCodes[ch - 1]}</td><td>${CHANNEL_FREQUENCIES_MHZ[ch - 1].toFixed(4)}</td><td>${use}</td></tr>`);
+    const CHANNEL_FREQUENCIES_MHZ = [
+      476.4250, 476.4500, 476.4750, 476.5000, 476.5250,
+      476.5500, 476.5750, 476.6000, 476.6250, 476.6500,
+      476.6750, 476.7000, 476.7250, 476.7500, 476.7750,
+      476.8000, 476.8250, 476.8500, 476.8750, 476.9000,
+      476.9250, 476.9500, 476.9750, 477.0000, 477.0250,
+      477.0500, 477.0750, 477.1000, 477.1250, 477.1500,
+      477.1750, 477.2000, 477.2250, 477.2500, 477.2750,
+      477.3000, 477.3250, 477.3500, 477.3750, 477.4000,
+      476.4375, 476.4625, 476.4875, 476.5125, 476.5375,
+      476.5625, 476.5875, 476.6125, 476.6375, 476.6625,
+      476.6875, 476.7125, 476.7375, 476.7625, 476.7875,
+      476.8125, 476.8375, 476.8625, 476.8875, 476.9125,
+      476.9250, 476.9375, 476.9500, 476.9875, 477.0125,
+      477.0375, 477.0625, 477.0875, 477.1125, 477.1375,
+      477.1875, 477.2125, 477.2375, 477.2625, 477.2875,
+      477.3125, 477.3375, 477.3625, 477.3875, 477.4125
+    ];
+
+    function channelCommonUse(ch) {
+      if (ch === 5 || ch === 35) return "EMERG ONLY";
+      if (ch === 11) return "CALLING";
+      if (ch === 10) return "4WD/CONVOY";
+      if (ch === 18) return "CAMPERS";
+      if (ch === 22 || ch === 23) return "DATA ONLY";
+      if (ch === 40) return "TRUCKING";
+      if (ch >= 1 && ch <= 8) return `RPT IN ${ch}`;
+      if (ch >= 31 && ch <= 38) return `RPT OUT ${ch - 30}`;
+      if (ch >= 41 && ch <= 48) return `RPT IN ${ch}`;
+      if (ch >= 71 && ch <= 78) return `RPT OUT ${ch - 30}`;
+      if (ch >= 61 && ch <= 63) return "RESERVED";
+      return "";
     }
-    panels.push(`<div class="channel-index"><table><thead><tr><th>CH</th><th>KTC</th><th>MHz</th><th>USE</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`);
-  }
-  return `<div class="page radio-section"><div>` +
-    `<div class="header"><div class="title">RADIO PLAN &amp; 80-CHANNEL UHF CB INDEX</div><div class="meta">DAY ${dayNum} | SET ${setNum}</div></div>` +
-    `<div class="cat-header">KTC-600 CODE / PRIMARY, SECONDARY &amp; ALTERNATES</div>` +
-    `<table><tbody><tr><th>YOUR CALL SIGN</th><td>____________</td><th>TEAM CALL SIGN</th><td>____________</td></tr></tbody></table>` +
-    `<table class="radio-assignments"><thead><tr><th>ROLE</th><th>KTC-600 CODE</th><th>CHANNEL</th><th>FREQUENCY</th></tr></thead><tbody>${assignmentRows}</tbody></table>` +
-    `<div class="cat-header">RADIO PROCEDURE CODES</div><table><thead><tr><th>MEANING</th><th>CODE</th></tr></thead><tbody>${switchRows}</tbody></table>` +
-    `<div class="cat-header">CHANNEL | KTC-600 CODE | FREQUENCY | COMMON USE</div>` +
-    `<div class="channel-index-grid">${panels.join("")}</div>` +
-    `<div class="radio-note">Blank use cells are intentionally left free. Australian UHF CB plan; channels 61–63 reserved. Confirm local regulations. Shared, unencrypted radio.</div>` +
-    `</div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
-}
-function buildDayHTML(dayNum, startSet, rng) {
-  const setNum = String(startSet + dayNum - 1).padStart(2, "0");
-  const allWords = Object.values(VOCABULARY).flat();
-  const trigraphs = generateHammingTrigraphs(allWords.length + 80, rng);
-  const mapping = {}; allWords.forEach((word, i) => { mapping[word] = trigraphs[i]; });
-  const channelCodes = trigraphs.slice(allWords.length);
-  let encodeHTML = "";
-  for (const [category, words] of Object.entries(VOCABULARY)) {
-    encodeHTML += `<div class="cat-header">${category}</div><table>`;
-    const half = Math.ceil(words.length / 2);
-    for (let i = 0; i < half; i++) {
-      const a = words[i], b = words[i + half] || "";
-      encodeHTML += `<tr><td class="w">${a}</td><td class="c">${mapping[a]}</td><td class="w">${b}</td><td class="c">${b ? mapping[b] : ""}</td></tr>`;
+
+    function createRNG(seed) {
+      if (!seed) return Math.random;
+      let h = 1779033703 ^ seed.length;
+      for (let i = 0; i < seed.length; i++) {
+        h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
+        h = (h << 13) | (h >>> 19);
+      }
+      return function() {
+        h = Math.imul(h ^ (h >>> 16), 2246822507);
+        h = Math.imul(h ^ (h >>> 13), 3266489909);
+        return ((h ^= h >>> 16) >>> 0) / 4294967296;
+      };
     }
-    encodeHTML += "</table>";
-  }
-  const page1 = `<div class="page"><div><div class="header"><div class="title">KTC-600 OPERATIONS CODE — ENCODE</div><div class="meta">DAY ${dayNum} | SET ${setNum} | 24 HRS</div></div>${encodeHTML}</div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
-  const decodePairs = Object.entries(mapping).map(([word, code]) => ({ code, word })).sort((a,b) => a.code.localeCompare(b.code));
-  const halfDec = Math.ceil(decodePairs.length / 2); let decodeRowsHTML = "";
-  for (let i = 0; i < halfDec; i++) {
-    const first = decodePairs[i], second = decodePairs[i + halfDec] || { code: "", word: "" };
-    decodeRowsHTML += `<tr><td class="c">${first.code}</td><td class="w">${first.word}</td><td class="c">${second.code}</td><td class="w">${second.word}</td></tr>`;
-  }
-  const page2 = `<div class="page"><div><div class="header"><div class="title">KTC-600 OPERATIONS CODE — DECODE</div><div class="meta">DAY ${dayNum} | SET ${setNum} | ALPHABETICAL</div></div><table><thead><tr><th class="c">CODE</th><th class="w">PLAINTEXT</th><th class="c">CODE</th><th class="w">PLAINTEXT</th></tr></thead><tbody>${decodeRowsHTML}</tbody></table></div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
-  const headerSpans = KAL61_SLOT_WIDTHS.map((span,digit) => `<th colspan="${span}">${digit}</th>`).join("");
-  const starts = new Set(), ends = new Set(); let cursor = 0;
-  for (const width of KAL61_SLOT_WIDTHS) { starts.add(cursor); ends.add(cursor + width - 1); cursor += width; }
-  const kalBodyHTML = generateKAL61Rows(rng).map(({rowLabel,letters}) => {
-    const cells = letters.map((ch,index) => `<td class="${[starts.has(index) ? "grp-start" : "", ends.has(index) ? "grp-end" : ""].filter(Boolean).join(" ")}">${ch}</td>`).join("");
-    return `<tr><td class="row-lbl">${rowLabel}</td>${cells}</tr>`;
-  }).join("");
-  const page3 = `<div class="page"><div><div class="header"><div class="title">KTC-1400 / KAL-61 NUMERAL CIPHER</div><div class="meta">DAY ${dayNum} | SET ${setNum} | LIST ALPHA</div></div><table class="kal-table"><thead><tr><th class="row-lbl"></th>${headerSpans}</tr></thead><tbody>${kalBodyHTML}</tbody></table><div class="notes"><strong>KAL-61 FRAME ALIGNMENT:</strong> Insert sheet so rows A–Y align with the left window and digits 0–9 align with the top column slots (4-3-3-2-2-3-2-2-2-2).<br><br><strong>ENCIPHERMENT:</strong> Pick random start row + indicator letter. Encipher one digit per row stepping down (A→Y). Wrap with KTC-600 NUMERALS and TEXT codes.</div></div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
-  return page1 + page2 + page3 + buildRadioPage(dayNum, setNum, mapping, channelCodes, rng);
-}
-function renderSheets() {
-  const days = Math.max(1, Math.min(30, parseInt(document.getElementById("inp-days").value, 10) || 1));
-  const startSet = Math.max(1, Math.min(99, parseInt(document.getElementById("inp-set").value, 10) || 23));
-  const rng = createRNG(document.getElementById("inp-seed").value.trim());
-  let output = ""; for (let day = 1; day <= days; day++) output += buildDayHTML(day, startSet, rng);
-  document.getElementById("sheets-container").innerHTML = output;
-}
-renderSheets();
-</script>
+
+    function shuffle(array, rng) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function generateHammingTrigraphs(count, rng) {
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const all = [];
+      for (const a of letters) {
+        for (const b of letters) {
+          for (const c of letters) all.push(a + b + c);
+        }
+      }
+      shuffle(all, rng);
+      const selected = [];
+      for (const candidate of all) {
+        const separatedFromAll = selected.every(existing =>
+          Number(candidate[0] !== existing[0]) +
+          Number(candidate[1] !== existing[1]) +
+          Number(candidate[2] !== existing[2]) >= 2
+        );
+        if (separatedFromAll) {
+          selected.push(candidate);
+          if (selected.length === count) return selected;
+        }
+      }
+      throw new Error("Unable to generate enough trigraphs.");
+    }
+
+    function buildRadioPage(dayNum, setNum, mapping, channelCodes, rng) {
+      const assignments = ["PRIMARY", "SECONDARY", "ALT PRI", "ALT SEC"];
+      // Choose four distinct channels with no designated common use, using the sheet's seeded RNG.
+      const availableChannels = shuffle(
+        Array.from({ length: 80 }, (_, i) => i + 1)
+          .filter(ch => !channelCommonUse(ch)),
+        rng
+      );
+      const assignmentRows = assignments.map((role, i) => {
+        const ch = availableChannels[i];
+        const frequency = CHANNEL_FREQUENCIES_MHZ[ch - 1].toFixed(4);
+        return `<tr><td>${role}</td><td>${channelCodes[ch - 1]}</td>` +
+          `<td>CH ${String(ch).padStart(2, "0")}</td><td>${frequency} MHz</td></tr>`;
+      }).join("");
+      const switchRows = [
+        "SWITCH CHANNEL",
+        "SWITCH FREQUENCY",
+        "SWITCH TO PRIMARY",
+        "SWITCH TO SECONDARY",
+        "SWITCH TO ALTERNATE"
+      ].map(phrase =>
+        `<tr><td>${phrase}</td><td class="c">${mapping[phrase]}</td></tr>`
+      ).join("");
+      const panels = [];
+      for (let start = 1; start <= 80; start += 20) {
+        const rows = [];
+        for (let ch = start; ch < start + 20; ch++) {
+          const use = channelCommonUse(ch);
+          rows.push(
+            `<tr><td>${String(ch).padStart(2, "0")}</td>` +
+            `<td>${channelCodes[ch - 1]}</td>` +
+            `<td>${CHANNEL_FREQUENCIES_MHZ[ch - 1].toFixed(4)}</td>` +
+            `<td>${use}</td></tr>`
+          );
+        }
+        panels.push(
+          `<div class="channel-index"><table><thead><tr>` +
+          `<th>CH</th><th>KTC</th><th>MHz</th><th>USE</th>` +
+          `</tr></thead><tbody>${rows.join("")}</tbody></table></div>`
+        );
+      }
+      return `<div class="page radio-section"><div>` +
+        `<div class="header"><div class="title">` +
+        `RADIO PLAN &amp; 80-CHANNEL UHF CB INDEX</div>` +
+        `<div class="meta">DAY ${dayNum} | SET ${setNum}</div></div>` +
+        `<div class="cat-header">KTC-600 CODE / PRIMARY, SECONDARY &amp; ALTERNATES</div>` +
+        `<table><tbody><tr><th>YOUR CALL SIGN</th><td>____________</td>` +
+        `<th>TEAM CALL SIGN</th><td>____________</td></tr></tbody></table>` +
+        `<table class="radio-assignments"><thead><tr><th>ROLE</th>` +
+        `<th>KTC-600 CODE</th><th>CHANNEL</th><th>FREQUENCY</th></tr></thead>` +
+        `<tbody>${assignmentRows}</tbody></table>` +
+        `<div class="cat-header">RADIO PROCEDURE CODES</div>` +
+        `<table><thead><tr><th>MEANING</th><th>CODE</th></tr></thead>` +
+        `<tbody>${switchRows}</tbody></table>` +
+        `<div class="cat-header">CHANNEL | KTC-600 CODE | FREQUENCY | COMMON USE</div>` +
+        `<div class="channel-index-grid">${panels.join("")}</div>` +
+        `<div class="radio-note">Blank use cells are intentionally left free. ` +
+        `Australian UHF CB plan; channels 61–63 reserved. Confirm local regulations. ` +
+        `Shared, unencrypted radio.</div>` +
+        `</div><div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — ` +
+        `DESTROY AFTER USE</div></div>`;
+    }
+
+    function buildDayHTML(dayNum, startSet, rng) {
+      const setNum = String(startSet + dayNum - 1).padStart(2, "0");
+      const allWords = Object.values(VOCABULARY).flat();
+      const trigraphs = generateHammingTrigraphs(allWords.length + 80, rng);
+      const mapping = {};
+      allWords.forEach((word, i) => { mapping[word] = trigraphs[i]; });
+      const channelCodes = trigraphs.slice(allWords.length);
+      let encodeHTML = "";
+
+      for (const [category, words] of Object.entries(VOCABULARY)) {
+        encodeHTML += `<div class="cat-header">${category}</div><table>`;
+        const half = Math.ceil(words.length / 2);
+        for (let i = 0; i < half; i++) {
+          const a = words[i];
+          const b = words[i + half] || "";
+          encodeHTML += `<tr><td class="w">${a}</td><td class="c">${mapping[a]}</td>` +
+            `<td class="w">${b}</td><td class="c">${b ? mapping[b] : ""}</td></tr>`;
+        }
+        encodeHTML += "</table>";
+      }
+
+      const page1 = `<div class="page"><div><div class="header">` +
+        `<div class="title">KTC-600 OPERATIONS CODE — ENCODE</div>` +
+        `<div class="meta">DAY ${dayNum} | SET ${setNum} | 24 HRS</div>` +
+        `</div>${encodeHTML}</div><div class="footer">` +
+        `OVERLAND &amp; TRAIL OPSEC EDITION — DESTROY AFTER USE</div></div>`;
+
+      const decodePairs = Object.entries(mapping)
+        .map(([word, code]) => ({ code, word }))
+        .sort((a, b) => a.code.localeCompare(b.code));
+      const halfDec = Math.ceil(decodePairs.length / 2);
+      let decodeRowsHTML = "";
+      for (let i = 0; i < halfDec; i++) {
+        const first = decodePairs[i];
+        const second = decodePairs[i + halfDec] || { code: "", word: "" };
+        decodeRowsHTML += `<tr><td class="c">${first.code}</td>` +
+          `<td class="w">${first.word}</td><td class="c">${second.code}</td>` +
+          `<td class="w">${second.word}</td></tr>`;
+      }
+
+      const page2 = `<div class="page"><div><div class="header">` +
+        `<div class="title">KTC-600 OPERATIONS CODE — DECODE</div>` +
+        `<div class="meta">DAY ${dayNum} | SET ${setNum} | ALPHABETICAL</div>` +
+        `</div><table><thead><tr><th class="c">CODE</th>` +
+        `<th class="w">PLAINTEXT</th><th class="c">CODE</th>` +
+        `<th class="w">PLAINTEXT</th></tr></thead>` +
+        `<tbody>${decodeRowsHTML}</tbody></table></div>` +
+        `<div class="footer">OVERLAND &amp; TRAIL OPSEC EDITION — ` +
+        `DESTROY AFTER USE</div></div>`;
+
+      return page1 + page2 + buildRadioPage(dayNum, setNum, mapping, channelCodes, rng);
+    }
+
+    function renderSheets() {
+      const days = Math.max(
+        1,
+        Math.min(30, parseInt(document.getElementById("inp-days").value, 10) || 1)
+      );
+      const startSet = Math.max(
+        1,
+        Math.min(99, parseInt(document.getElementById("inp-set").value, 10) || 23)
+      );
+      const rng = createRNG(document.getElementById("inp-seed").value.trim());
+      let output = "";
+      for (let day = 1; day <= days; day++) {
+        output += buildDayHTML(day, startSet, rng);
+      }
+      document.getElementById("sheets-container").innerHTML = output;
+    }
+
+    renderSheets();
+  </script>
 </body>
 </html>
