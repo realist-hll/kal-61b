@@ -402,3 +402,64 @@ select {
   .compact-panel { padding: 8px; }
   .readout-bar { min-width: 100%; }
 }
+
+@media print {
+  .yellow-slider,
+  .compact-panel,
+  .kal-stamping,
+  .sheet-footer {
+    display: none !important;
+  }
+
+  body {
+    display: block;
+    padding: 0;
+    background: #fff;
+    color: #111;
+  }
+
+  .device-wrapper {
+    width: 100%;
+    max-width: none;
+  }
+
+  .sheet-header {
+    color: #111;
+  }
+  
+  .kal-case,
+  .kal-window {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
+    color: #111;
+  }
+  
+  tr.cipher-row:nth-child(even) td,
+  tr.cipher-row td.row-label,
+  tr.heading-row th,
+  .letter-group span {
+    background: #fff !important;
+  }
+
+  tr.cipher-row td,
+  tr.heading-row th,
+  .letter-group span,
+  .hdr-letters {
+    color: #111 !important;
+  }
+
+  .grid-stage {
+    padding: 0;
+    background: #fff;
+  }
+  
+  tr.cipher-row:hover td,
+  .letter-group span:hover,
+  .letter-group span.selected {
+    background: #fff !important;
+  }
+}
