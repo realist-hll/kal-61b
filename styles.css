@@ -427,6 +427,16 @@ select {
   .sheet-header {
     color: #111;
   }
+
+  .kal-window {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
+    color: #111;
+  }
   
   tr.cipher-row:nth-child(even) td,
   tr.cipher-row td.row-label,
@@ -442,8 +452,8 @@ select {
     color: #111 !important;
   }
 
-  .kal-window,
   .grid-stage {
+    padding: 0;
     background: #fff;
   }
   
